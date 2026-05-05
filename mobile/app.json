@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "Veor Collection",
+    "slug": "veor-collection",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#1A1A1A",
+    "icon": "./assets/logo.png",
+    "splash": {
+      "image": "./assets/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1A1A1A"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.veorcollection.app"
+    }
+  }
+}
