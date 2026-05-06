@@ -1,22 +1,38 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../database');
+const productController = require('../controllers/productController');
+const authMiddleware = require('../middleware/authMiddleware');
+const roleMiddleware = require('../middleware/roleMiddleware');
+const { validate } = require('../middleware/validationMiddleware');
+const { body } = require('express-validator');
+const multer = require('multer');
+const path = require('path');
 
-// Tüm ürünleri getir
-router.get('/', (req, res) => {
-    db.all(`SELECT * FROM products ORDER BY name ASC`, [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
-    });
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/')
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname))
+  }
 });
+const upload = multer({ storage: storage });
 
-// Stok güncelleme
-router.put('/:id/stock', (req, res) => {
-    const { stock } = req.body;
-    db.run(`UPDATE products SET stock = ? WHERE id = ?`, [stock, req.params.id], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: 'Stok güncellendi', changes: this.changes });
-    });
-});
+router.use(authMiddleware);
+
+router.get('/', productController.getAllProducts);
+router.get('/low-stock', roleMiddleware('admin'), productController.getLowStock);
+router.get('/:id', productController.getProduct);
+
+const validateProduct = [
+    body('name').trim().notEmpty().withMessage('Ürün adı gerekli'),
+    body('price').isFloat({ min: 0 }).withMessage('Geçerli bir fiyat girin'),
+    body('stock').isInt({ min: 0 }).withMessage('Geçerli bir stok girin')
+];
+
+router.post('/', roleMiddleware('admin'), upload.single('image'), validateProduct, validate, productController.createProduct);
+router.put('/:id', roleMiddleware('admin'), upload.single('image'), validateProduct, validate, productController.updateProduct);
+router.delete('/:id', roleMiddleware('admin'), productController.deleteProduct);
 
 module.exports = router;

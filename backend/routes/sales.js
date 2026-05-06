@@ -1,64 +1,23 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../database');
+const saleController = require('../controllers/saleController');
+const authMiddleware = require('../middleware/authMiddleware');
+const roleMiddleware = require('../middleware/roleMiddleware');
+const { validate } = require('../middleware/validationMiddleware');
+const { body } = require('express-validator');
 
-// Yeni satış ekle
-router.post('/', (req, res) => {
-    const { product_id, quantity, user_id } = req.body;
+router.use(authMiddleware);
 
-    // Önce ürünün fiyatını ve güncel stoğunu bul
-    db.get(`SELECT price, stock FROM products WHERE id = ?`, [product_id], (err, product) => {
-        if (err) return res.status(500).json({ error: err.message });
-        if (!product) return res.status(404).json({ error: 'Ürün bulunamadı' });
+router.get('/', saleController.getAllSales);
+router.get('/export', roleMiddleware('admin'), saleController.exportExcel);
+router.get('/:id', saleController.getSaleDetails);
 
-        if (product.stock < quantity) {
-            return res.status(400).json({ error: 'Yetersiz stok' });
-        }
+const validateSale = [
+    body('product_id').isInt().withMessage('Ürün ID gerekli'),
+    body('quantity').isInt({ min: 1 }).withMessage('Miktar en az 1 olmalı')
+];
 
-        const total_price = product.price * quantity;
-
-        db.serialize(() => {
-            db.run("BEGIN TRANSACTION");
-
-            // Satışı kaydet
-            db.run(`INSERT INTO sales (product_id, quantity, total_price, user_id) VALUES (?, ?, ?, ?)`, 
-                [product_id, quantity, total_price, user_id], 
-                function(err) {
-                    if (err) {
-                        db.run("ROLLBACK");
-                        return res.status(500).json({ error: err.message });
-                    }
-
-                    // Stoğu güncelle
-                    db.run(`UPDATE products SET stock = stock - ? WHERE id = ?`, [quantity, product_id], (err) => {
-                        if (err) {
-                            db.run("ROLLBACK");
-                            return res.status(500).json({ error: err.message });
-                        }
-                        
-                        db.run("COMMIT");
-                        res.status(201).json({ message: 'Satış başarıyla kaydedildi' });
-                    });
-                }
-            );
-        });
-    });
-});
-
-// Son 5 satışı getir
-router.get('/recent', (req, res) => {
-    const query = `
-        SELECT s.id, p.name as product_name, s.quantity, s.total_price, s.sale_date, u.username
-        FROM sales s
-        JOIN products p ON s.product_id = p.id
-        JOIN users u ON s.user_id = u.id
-        ORDER BY s.sale_date DESC
-        LIMIT 5
-    `;
-    db.all(query, [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
-    });
-});
+router.post('/', validateSale, validate, saleController.createSale);
+router.post('/:id/cancel', roleMiddleware('admin'), saleController.cancelSale);
 
 module.exports = router;

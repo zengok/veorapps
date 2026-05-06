@@ -11,26 +11,32 @@ export default function AppNavigator({ setUserToken }) {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarStyle: { backgroundColor: '#1A1A1A', borderTopColor: '#333' },
-        tabBarActiveTintColor: '#D4AF37', // Gold color
-        tabBarInactiveTintColor: '#888',
+        tabBarStyle: { 
+          backgroundColor: 'rgba(35, 31, 23, 0.95)', 
+          borderTopColor: '#4d4635',
+          borderTopWidth: 1,
+          elevation: 0, // for Android
+          shadowOpacity: 0,
+        },
+        tabBarActiveTintColor: '#f2ca50', // Primary gold
+        tabBarInactiveTintColor: '#99907c', // Outline
       }}
     >
       <Tab.Screen 
         name="Dashboard" 
-        options={{ tabBarLabel: 'Özet' }}
+        options={{ tabBarLabel: 'Atelier' }}
       >
         {(props) => <DashboardScreen {...props} setUserToken={setUserToken} />}
       </Tab.Screen>
       <Tab.Screen 
         name="Sales" 
         component={SalesScreen} 
-        options={{ tabBarLabel: 'Satış Gir' }}
+        options={{ tabBarLabel: 'Vault' }}
       />
       <Tab.Screen 
         name="Inventory" 
         component={InventoryScreen} 
-        options={{ tabBarLabel: 'Stok & Katalog' }}
+        options={{ tabBarLabel: 'Stock' }}
       />
     </Tab.Navigator>
   );

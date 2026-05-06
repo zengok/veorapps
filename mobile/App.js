@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { View, Text, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -29,7 +30,14 @@ export default function App() {
   }, []);
 
   if (isLoading) {
-    return null;
+    return (
+      <SafeAreaProvider>
+        <View style={{ flex: 1, backgroundColor: '#16130b', justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#d4af37" />
+          <Text style={{ color: '#d4af37', marginTop: 20, fontSize: 18, fontWeight: 'bold', letterSpacing: 2 }}>VEOR COLLECTION</Text>
+        </View>
+      </SafeAreaProvider>
+    );
   }
 
   return (

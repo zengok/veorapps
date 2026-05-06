@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: 'rgba(26, 26, 26, 0.85)',
+    backgroundColor: 'rgba(22, 19, 11, 0.90)',
   },
   header: {
     flexDirection: 'row',
@@ -136,10 +136,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: '#4d4635',
   },
   headerTitle: {
-    color: '#FFF',
+    color: '#f2ca50',
     fontSize: 22,
     fontWeight: 'bold',
   },
@@ -147,14 +147,14 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   logoutText: {
-    color: '#D4AF37',
+    color: '#99907c',
     fontWeight: 'bold',
   },
   scrollContent: {
     padding: 20,
   },
   sectionTitle: {
-    color: '#D4AF37',
+    color: '#d4af37',
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 15,
@@ -168,26 +168,26 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   card: {
-    backgroundColor: '#2A2A2A',
+    backgroundColor: 'rgba(22, 19, 11, 0.85)',
     width: '48%',
     padding: 15,
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: '#4d4635',
   },
   cardLabel: {
-    color: '#888',
+    color: '#d0c5af',
     fontSize: 14,
     marginBottom: 8,
   },
   cardValue: {
-    color: '#FFF',
+    color: '#f2ca50',
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 4,
   },
   cardAmount: {
-    color: '#4CAF50', // Green for money
+    color: '#eae1d4',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -195,42 +195,42 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   saleItem: {
-    backgroundColor: '#2A2A2A',
+    backgroundColor: 'rgba(22, 19, 11, 0.85)',
     flexDirection: 'row',
     justifyContent: 'space-between',
     padding: 15,
-    borderRadius: 12,
+    borderRadius: 8,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: '#4d4635',
   },
   saleItemLeft: {
     flex: 1,
   },
   saleProduct: {
-    color: '#FFF',
+    color: '#f2ca50',
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
   },
   saleDetails: {
-    color: '#888',
+    color: '#d0c5af',
     fontSize: 12,
   },
   saleItemRight: {
     alignItems: 'flex-end',
   },
   saleQuantity: {
-    color: '#D4AF37',
+    color: '#d4af37',
     fontWeight: 'bold',
     marginBottom: 4,
   },
   salePrice: {
-    color: '#4CAF50',
+    color: '#eae1d4',
     fontWeight: 'bold',
   },
   emptyText: {
-    color: '#888',
+    color: '#99907c',
     textAlign: 'center',
     marginTop: 20,
   }

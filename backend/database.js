@@ -46,9 +46,8 @@ function initDb() {
         const defaultUsers = ['batuhan', 'baris', 'gokhan'];
         const defaultPassword = 'veor'; // Tüm kullanıcılar için varsayılan şifre
 
-        bcrypt.hash(defaultPassword, 10, (err, hash) => {
-            if (err) return;
-            
+        try {
+            const hash = bcrypt.hashSync(defaultPassword, 10);
             defaultUsers.forEach(user => {
                 db.get(`SELECT id FROM users WHERE username = ?`, [user], (err, row) => {
                     if (!row) {
@@ -57,7 +56,9 @@ function initDb() {
                     }
                 });
             });
-        });
+        } catch (err) {
+            console.error('Şifre hashleme hatası:', err);
+        }
 
         // Örnek Ürün Ekleme (Test amaçlı)
         db.get(`SELECT count(*) as count FROM products`, (err, row) => {

@@ -89,13 +89,15 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     padding: 20,
-    backgroundColor: 'rgba(26, 26, 26, 0.7)', // Yarı saydam siyah katman
+    backgroundColor: 'rgba(22, 19, 11, 0.90)', // Dark glass surface
   },
   formContainer: {
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Form arka planı için biraz daha koyu
-    padding: 20,
-    borderRadius: 15,
+    backgroundColor: 'rgba(31, 27, 19, 0.85)',
+    padding: 24,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#4d4635',
   },
   logo: {
     width: 250,
@@ -104,26 +106,29 @@ const styles = StyleSheet.create({
   },
   input: {
     width: '100%',
-    backgroundColor: 'rgba(51, 51, 51, 0.8)',
-    color: '#FFF',
-    borderRadius: 8,
+    backgroundColor: '#16130b',
+    color: '#eae1d4',
+    borderRadius: 4,
     padding: 15,
     marginBottom: 20,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#444',
+    borderColor: '#4d4635',
   },
   button: {
     width: '100%',
-    backgroundColor: '#D4AF37',
+    backgroundColor: '#d4af37',
     padding: 15,
-    borderRadius: 8,
+    borderRadius: 4,
     alignItems: 'center',
     marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#f2ca50',
   },
   buttonText: {
-    color: '#000',
-    fontSize: 18,
+    color: '#16130b',
+    fontSize: 16,
     fontWeight: 'bold',
+    letterSpacing: 1,
   },
 });

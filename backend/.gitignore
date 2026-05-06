@@ -1,0 +1,7 @@
+node_modules/
+.env
+veor.db
+veor_backup.db
+logs/
+uploads/
+.DS_Store

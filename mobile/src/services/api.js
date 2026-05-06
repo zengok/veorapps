@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // LÜTFEN DİKKAT: Sanal sunucunuzun IP adresi buraya yazılmalı.
 // Geliştirme aşamasında bilgisayarınızın yerel IP'sini yazabilirsiniz (örn: 192.168.1.50)
-const API_URL = 'https://brown-views-occur.loca.lt/api';
+const API_URL = 'http://172.16.0.52:3000/api';
 
 const api = axios.create({
   baseURL: API_URL,
