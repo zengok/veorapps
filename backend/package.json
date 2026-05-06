@@ -4,23 +4,43 @@
   "description": "Backend API for Veor Collection",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "ts-node server.js",
+    "db:migrate": "npx sequelize-cli db:migrate",
+    "db:migrate:undo": "npx sequelize-cli db:migrate:undo",
+    "db:seed": "npx sequelize-cli db:seed:all",
+    "migrate-data": "ts-node scripts/migrate-sqlite-to-postgres.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.2",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "csurf": "^1.11.0",
     "dotenv": "^17.4.2",
     "exceljs": "^4.4.0",
     "express": "^4.18.2",
+    "express-mongo-sanitize": "^2.2.0",
     "express-rate-limit": "^8.5.0",
     "express-validator": "^7.3.2",
+    "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.1.1",
+    "pg": "^8.20.0",
+    "pg-hstore": "^2.3.4",
+    "reflect-metadata": "^0.2.2",
+    "sequelize": "^6.37.8",
+    "sequelize-typescript": "^2.1.6",
+    "sqlite": "^5.1.1",
     "sqlite3": "^6.0.1",
-    "winston": "^3.19.0"
+    "winston": "^3.19.0",
+    "xss-clean": "^0.1.4"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "@types/node": "^25.6.0",
+    "@types/validator": "^13.15.10",
+    "nodemon": "^3.1.14",
+    "sequelize-cli": "^6.6.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
   }
 }

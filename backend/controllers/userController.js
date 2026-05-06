@@ -1,10 +1,11 @@
-const { dbGet, dbRun, dbAll } = require('../config/database');
+const { User } = require('../models');
 const { AppError } = require('../middleware/errorHandler');
 const bcrypt = require('bcryptjs');
+const { Op } = require('sequelize');
 
 exports.getAllUsers = async (req, res, next) => {
     try {
-        const users = await dbAll('SELECT id, username, role, email, phone, last_login, is_active, created_at FROM users');
+        const users = await User.findAll({ attributes: ['id', 'username', 'role', 'email', 'createdAt'] });
         res.json({ status: 'success', data: users });
     } catch (error) {
         next(error);
@@ -13,14 +14,15 @@ exports.getAllUsers = async (req, res, next) => {
 
 exports.createUser = async (req, res, next) => {
     try {
-        const { username, password, role, email, phone } = req.body;
+        const { username, password, role, email } = req.body;
         
-        const exists = await dbGet('SELECT id FROM users WHERE username = ? OR email = ?', [username, email]);
+        const exists = await User.findOne({ 
+            where: { [Op.or]: [{ username }, { email }] }
+        });
         if (exists) return next(new AppError('Bu kullanıcı adı veya e-posta zaten kullanımda', 400));
 
         const hash = await bcrypt.hash(password, 10);
-        await dbRun(`INSERT INTO users (username, password, role, email, phone) VALUES (?, ?, ?, ?, ?)`, 
-            [username, hash, role || 'user', email, phone]);
+        await User.create({ username, password: hash, role: role || 'user', email });
         
         res.status(201).json({ status: 'success', message: 'Kullanıcı oluşturuldu' });
     } catch (error) {
@@ -30,11 +32,13 @@ exports.createUser = async (req, res, next) => {
 
 exports.updateUser = async (req, res, next) => {
     try {
-        const { role, email, phone, is_active } = req.body;
+        const { role, email } = req.body;
         const { id } = req.params;
 
-        await dbRun(`UPDATE users SET role=?, email=?, phone=?, is_active=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`, 
-            [role, email, phone, is_active, id]);
+        const user = await User.findByPk(id);
+        if (!user) return next(new AppError('Kullanıcı bulunamadı', 404));
+
+        await user.update({ role, email });
         
         res.json({ status: 'success', message: 'Kullanıcı güncellendi' });
     } catch (error) {
@@ -45,8 +49,11 @@ exports.updateUser = async (req, res, next) => {
 exports.deleteUser = async (req, res, next) => {
     try {
         const { id } = req.params;
-        await dbRun('UPDATE users SET is_active = 0 WHERE id = ?', [id]);
-        res.json({ status: 'success', message: 'Kullanıcı silindi (soft delete)' });
+        const user = await User.findByPk(id);
+        if (!user) return next(new AppError('Kullanıcı bulunamadı', 404));
+
+        await user.destroy();
+        res.json({ status: 'success', message: 'Kullanıcı silindi' });
     } catch (error) {
         next(error);
     }
@@ -54,7 +61,7 @@ exports.deleteUser = async (req, res, next) => {
 
 exports.getProfile = async (req, res, next) => {
     try {
-        const user = await dbGet('SELECT id, username, role, email, phone, last_login, created_at FROM users WHERE id = ?', [req.user.id]);
+        const user = await User.findByPk(req.user.id, { attributes: ['id', 'username', 'role', 'email', 'createdAt'] });
         res.json({ status: 'success', data: user });
     } catch (error) {
         next(error);
@@ -63,8 +70,11 @@ exports.getProfile = async (req, res, next) => {
 
 exports.updateProfile = async (req, res, next) => {
     try {
-        const { email, phone } = req.body;
-        await dbRun('UPDATE users SET email=?, phone=?, updated_at=CURRENT_TIMESTAMP WHERE id=?', [email, phone, req.user.id]);
+        const { email } = req.body;
+        const user = await User.findByPk(req.user.id);
+        if (!user) return next(new AppError('Kullanıcı bulunamadı', 404));
+
+        await user.update({ email });
         res.json({ status: 'success', message: 'Profil güncellendi' });
     } catch (error) {
         next(error);

@@ -1,21 +1,22 @@
-const { dbGet, dbAll } = require('../config/database');
+const { sequelize, Sale, Product, User } = require('../models');
+const { QueryTypes, Op } = require('sequelize');
 
 exports.getDashboard = async (req, res, next) => {
     try {
-        const [totalSales, totalRevenue, totalProducts, lowStockProducts] = await Promise.all([
-            dbGet("SELECT COUNT(*) as count FROM sales WHERE status = 'completed'"),
-            dbGet("SELECT SUM(total_amount) as total FROM sales WHERE status = 'completed'"),
-            dbGet("SELECT COUNT(*) as count FROM products WHERE is_active = 1"),
-            dbGet("SELECT COUNT(*) as count FROM products WHERE stock < 10 AND is_active = 1")
+        const [totalSales, totalRevenue, totalProducts, lowStockCount] = await Promise.all([
+            Sale.count({ where: { status: 'completed' } }),
+            Sale.sum('totalPrice', { where: { status: 'completed' } }),
+            Product.count(),
+            Product.count({ where: { stock: { [Op.lt]: 10 } } })
         ]);
 
         res.json({
             status: 'success',
             data: {
-                totalSales: totalSales.count,
-                totalRevenue: totalRevenue.total || 0,
-                totalProducts: totalProducts.count,
-                lowStockCount: lowStockProducts.count
+                totalSales,
+                totalRevenue: totalRevenue || 0,
+                totalProducts,
+                lowStockCount
             }
         });
     } catch (error) {
@@ -25,14 +26,16 @@ exports.getDashboard = async (req, res, next) => {
 
 exports.getSalesTrend = async (req, res, next) => {
     try {
-        const trend = await dbAll(`
-            SELECT date(sale_date) as date, SUM(total_amount) as revenue, COUNT(*) as sales_count
+        // We use raw query for date grouping as it's cleaner in Postgres
+        const trend = await sequelize.query(`
+            SELECT DATE("date") as date, SUM("totalPrice") as revenue, COUNT(*) as sales_count
             FROM sales 
             WHERE status = 'completed' 
-            GROUP BY date(sale_date) 
-            ORDER BY date(sale_date) DESC 
+            GROUP BY DATE("date") 
+            ORDER BY DATE("date") DESC 
             LIMIT 30
-        `);
+        `, { type: QueryTypes.SELECT });
+
         res.json({ status: 'success', data: trend });
     } catch (error) {
         next(error);
@@ -41,16 +44,16 @@ exports.getSalesTrend = async (req, res, next) => {
 
 exports.getTopProducts = async (req, res, next) => {
     try {
-        const topProducts = await dbAll(`
-            SELECT p.name, SUM(si.quantity) as total_sold, SUM(si.total_price) as total_revenue
-            FROM sale_items si
-            JOIN products p ON si.product_id = p.id
-            JOIN sales s ON si.sale_id = s.id
+        const topProducts = await sequelize.query(`
+            SELECT p.name, SUM(s.quantity) as total_sold, SUM(s."totalPrice") as total_revenue
+            FROM sales s
+            JOIN products p ON s."productId" = p.id
             WHERE s.status = 'completed'
-            GROUP BY p.id
+            GROUP BY p.id, p.name
             ORDER BY total_sold DESC
             LIMIT 10
-        `);
+        `, { type: QueryTypes.SELECT });
+        
         res.json({ status: 'success', data: topProducts });
     } catch (error) {
         next(error);
@@ -59,15 +62,16 @@ exports.getTopProducts = async (req, res, next) => {
 
 exports.getTopSellers = async (req, res, next) => {
     try {
-        const topSellers = await dbAll(`
-            SELECT u.username, COUNT(s.id) as sales_count, SUM(s.total_amount) as total_revenue
+        const topSellers = await sequelize.query(`
+            SELECT u.username, COUNT(s.id) as sales_count, SUM(s."totalPrice") as total_revenue
             FROM sales s
-            JOIN users u ON s.user_id = u.id
+            JOIN users u ON s."userId" = u.id
             WHERE s.status = 'completed'
-            GROUP BY u.id
+            GROUP BY u.id, u.username
             ORDER BY total_revenue DESC
             LIMIT 10
-        `);
+        `, { type: QueryTypes.SELECT });
+        
         res.json({ status: 'success', data: topSellers });
     } catch (error) {
         next(error);

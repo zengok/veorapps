@@ -1,7 +1,10 @@
 const jwt = require('jsonwebtoken');
 const config = require('../config/config');
 const { AppError } = require('./errorHandler');
-const { dbGet } = require('../config/database');
+const { User } = require('../models');
+
+// In-memory token blacklist (production'da Redis kullanılmalı)
+const tokenBlacklist = new Set();
 
 const authMiddleware = async (req, res, next) => {
     try {
@@ -14,25 +17,42 @@ const authMiddleware = async (req, res, next) => {
             return next(new AppError('Lütfen giriş yapınız', 401));
         }
 
+        // Check if token is blacklisted (logged out tokens)
+        if (tokenBlacklist.has(token)) {
+            return next(new AppError('Bu token geçersiz kılınmış, lütfen tekrar giriş yapın', 401));
+        }
+
         // Verify token
         const decoded = jwt.verify(token, config.jwt.secret);
 
-        // Check if user still exists
-        const user = await dbGet('SELECT * FROM users WHERE id = ?', [decoded.id]);
+        // Check if user still exists in DB
+        const user = await User.findByPk(decoded.id, {
+            attributes: ['id', 'username', 'role', 'email', 'failedLoginAttempts', 'lockUntil']
+        });
         if (!user) {
             return next(new AppError('Bu tokena sahip kullanıcı artık mevcut değil', 401));
         }
 
-        // Check if active
-        if (!user.is_active) {
-            return next(new AppError('Hesabınız dondurulmuş', 401));
+        // Check if account is locked
+        if (user.lockUntil && user.lockUntil > new Date()) {
+            const minutesLeft = Math.ceil((user.lockUntil - new Date()) / 60000);
+            return next(new AppError(`Hesabınız kilitli. ${minutesLeft} dakika sonra tekrar deneyin.`, 423));
         }
 
         req.user = user;
+        req.token = token;
         next();
     } catch (error) {
-        return next(new AppError('Geçersiz veya süresi dolmuş token', 401));
+        if (error.name === 'TokenExpiredError') {
+            return next(new AppError('Token süresi dolmuş, lütfen tekrar giriş yapın', 401));
+        }
+        return next(new AppError('Geçersiz token', 401));
     }
 };
 
+const addToBlacklist = (token) => {
+    tokenBlacklist.add(token);
+};
+
 module.exports = authMiddleware;
+module.exports.addToBlacklist = addToBlacklist;
