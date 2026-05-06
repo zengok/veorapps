@@ -8,6 +8,8 @@ const config = require('./config/config');
 const logger = require('./utils/logger');
 const { errorHandler } = require('./middleware/errorHandler');
 const { securityHeaders, apiLimiter, loginLimiter, dataSanitization } = require('./middleware/security');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./config/swagger');
 
 // Initialize database (SQLite legacy config kept for reference)
 require('./config/database');
@@ -81,6 +83,25 @@ app.use('/api/media', mediaRoutes);
 
 // Static file serving (uploads)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// ── API DOCS (Swagger UI) ────────────────────────────────────────────────
+const swaggerUiOptions = {
+    customCss: '.swagger-ui .topbar { background: linear-gradient(135deg, #1a1a2e, #16213e); }',
+    customSiteTitle: 'Veor Collection API Docs',
+    swaggerOptions: {
+        persistAuthorization: true, // Keep token across page refreshes
+        defaultModelsExpandDepth: 1,
+        docExpansion: 'list',
+        filter: true,
+    }
+};
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerUiOptions));
+
+// JSON spec endpoint (for external tools)
+app.get('/api-docs.json', (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.send(swaggerSpec);
+});
 
 // Health check
 app.get('/', (req, res) => {
