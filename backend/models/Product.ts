@@ -61,4 +61,30 @@ export class Product extends Model {
     allowNull: true,
   })
   sku!: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+    comment: 'Cloudinary public_id for this product image',
+  })
+  cloudinaryId!: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  thumbnailUrl!: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  mediumUrl!: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+    comment: 'Low-quality placeholder URL for lazy loading',
+  })
+  placeholderUrl!: string;
 }

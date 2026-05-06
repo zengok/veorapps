@@ -19,6 +19,7 @@ const salesRoutes = require('./routes/sales');
 const analyticsRoutes = require('./routes/analytics');
 const categoryRoutes = require('./routes/categories');
 const userRoutes = require('./routes/users');
+const mediaRoutes = require('./routes/media');
 
 const app = express();
 
@@ -76,6 +77,7 @@ app.use('/api/sales', salesRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/media', mediaRoutes);
 
 // Static file serving (uploads)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

@@ -1,6 +1,7 @@
 const { Product, Category } = require('../models');
 const { AppError } = require('../middleware/errorHandler');
 const { Op } = require('sequelize');
+const { buildImageUrls, deleteCloudinaryAsset } = require('./mediaController');
 
 exports.getAllProducts = async (req, res, next) => {
     try {
@@ -60,19 +61,31 @@ exports.getProduct = async (req, res, next) => {
 exports.createProduct = async (req, res, next) => {
     try {
         const { name, price, stock, category_id, description, barcode } = req.body;
-        const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
 
-        await Product.create({
+        let imageData = {};
+        if (req.file) {
+            const publicId = req.file.filename;
+            const urls = buildImageUrls(publicId);
+            imageData = {
+                imageUrl: urls.large,
+                thumbnailUrl: urls.thumbnail,
+                mediumUrl: urls.medium,
+                placeholderUrl: urls.placeholder,
+                cloudinaryId: publicId
+            };
+        }
+
+        const product = await Product.create({
             name,
             price,
             stock,
             categoryId: category_id,
             description,
             sku: barcode,
-            imageUrl
+            ...imageData
         });
         
-        res.status(201).json({ status: 'success', message: 'Ürün eklendi' });
+        res.status(201).json({ status: 'success', message: 'Ürün eklendi', data: product });
     } catch (error) {
         next(error);
     }
@@ -91,11 +104,21 @@ exports.updateProduct = async (req, res, next) => {
         };
 
         if (req.file) {
-            updateData.imageUrl = `/uploads/${req.file.filename}`;
+            // Delete old Cloudinary image if exists
+            if (product.cloudinaryId) {
+                await deleteCloudinaryAsset(product.cloudinaryId);
+            }
+            const publicId = req.file.filename;
+            const urls = buildImageUrls(publicId);
+            updateData.imageUrl = urls.large;
+            updateData.thumbnailUrl = urls.thumbnail;
+            updateData.mediumUrl = urls.medium;
+            updateData.placeholderUrl = urls.placeholder;
+            updateData.cloudinaryId = publicId;
         }
 
         await product.update(updateData);
-        res.json({ status: 'success', message: 'Ürün güncellendi' });
+        res.json({ status: 'success', message: 'Ürün güncellendi', data: product });
     } catch (error) {
         next(error);
     }
@@ -107,9 +130,13 @@ exports.deleteProduct = async (req, res, next) => {
         const product = await Product.findByPk(id);
         if (!product) return next(new AppError('Ürün bulunamadı', 404));
 
-        // Hard delete since is_active is removed
+        // Cascade delete: remove Cloudinary image if exists
+        if (product.cloudinaryId) {
+            await deleteCloudinaryAsset(product.cloudinaryId);
+        }
+
         await product.destroy();
-        res.json({ status: 'success', message: 'Ürün silindi' });
+        res.json({ status: 'success', message: 'Ürün ve görseli silindi' });
     } catch (error) {
         next(error);
     }

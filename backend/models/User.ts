@@ -52,4 +52,16 @@ export class User extends Model {
     allowNull: true,
   })
   lockUntil!: Date;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  avatarUrl!: string;
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  avatarCloudinaryId!: string;
 }
