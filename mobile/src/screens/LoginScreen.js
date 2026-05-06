@@ -28,7 +28,8 @@ export default function LoginScreen({ setUserToken }) {
       
       setUserToken(token);
     } catch (error) {
-      Alert.alert('Giriş Başarısız', error.response?.data?.error || 'Bir hata oluştu.');
+      const errorMessage = error.response?.data?.message || error.message || 'Sunucuya bağlanılamadı, internetinizi kontrol edin.';
+      Alert.alert('Giriş Başarısız', errorMessage);
     } finally {
       setLoading(false);
     }
