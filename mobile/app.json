@@ -4,19 +4,31 @@
     "slug": "veor-collection",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "backgroundColor": "#1A1A1A",
-    "icon": "./assets/logo.png",
     "splash": {
-      "image": "./assets/logo.png",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1A1A1A"
+      "backgroundColor": "#ffffff"
     },
+    "assetBundlePatterns": ["**/*"],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false
     },
     "android": {
-      "package": "com.veorcollection.app"
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1a1a1a"
+      },
+      "package": "com.veorcollection.app",
+      "versionCode": 1,
+      "permissions": ["android.permission.INTERNET", "android.permission.POST_NOTIFICATIONS"]
+    },
+    "plugins": ["expo-notifications"],
+    "extra": {
+      "eas": {
+        "projectId": "BURAYA_EAS_INIT_CALISTIRINCA_OTOMATIK_GELECEK"
+      }
     }
   }
 }

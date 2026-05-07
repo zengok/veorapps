@@ -1,8 +1,7 @@
 node_modules/
-.expo/
-veor.db
-*.db
 .env
+.expo/
+dist/
+build/
+*.apk
 .DS_Store
-*.db-shm
-*.db-wal
