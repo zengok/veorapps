@@ -1,0 +1,12 @@
+{
+  "name": "veor-collection-root",
+  "version": "1.0.0",
+  "description": "Veor Collection - Monorepo root",
+  "scripts": {
+    "build": "cd backend && npm install && npx prisma generate && npm run build",
+    "start": "cd backend && npx prisma db push && node dist/index.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
