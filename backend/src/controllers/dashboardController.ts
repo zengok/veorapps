@@ -82,13 +82,27 @@ export const getDashboard = asyncHandler(async (_req: Request, res: Response) =>
   });
 });
 
-// ── Günlük Veri Sıfırlama ────────────────────────────────────────────────────
-// Sadece bugünkü Sale kayıtlarını siler. Stok ve Sipariş verilerine dokunmaz.
-export const resetDailyData = asyncHandler(async (req: Request, res: Response) => {
-  const { password } = req.body as { password?: string };
+// ── Satış Verisi Sıfırlama ───────────────────────────────────────────────────
+// period: 'daily' | 'weekly' | 'monthly'
+// Sadece ilgili dönemdeki Sale kayıtlarını siler.
+// Stok adetleri ve sipariş verilerine kesinlikle dokunmaz.
+const PERIOD_LABELS: Record<string, string> = {
+  daily: 'Bugünkü',
+  weekly: 'Bu haftaki',
+  monthly: 'Bu ayki',
+};
+
+export const resetSalesData = asyncHandler(async (req: Request, res: Response) => {
+  const { password, period } = req.body as { password?: string; period?: string };
 
   if (!password) {
     res.status(400).json({ success: false, error: 'Şifre gerekli' });
+    return;
+  }
+
+  const validPeriods = ['daily', 'weekly', 'monthly'];
+  if (!period || !validPeriods.includes(period)) {
+    res.status(400).json({ success: false, error: 'Geçersiz dönem. daily, weekly veya monthly olmalı' });
     return;
   }
 
@@ -108,17 +122,23 @@ export const resetDailyData = asyncHandler(async (req: Request, res: Response) =
     return;
   }
 
-  // Bugünün başlangıcını İstanbul saatine göre hesapla
-  const { todayStart } = getIstanbulRanges();
+  // İlgili dönemin başlangıcını İstanbul saatine göre hesapla
+  const ranges = getIstanbulRanges();
+  const startDateMap: Record<string, Date> = {
+    daily: ranges.todayStart,
+    weekly: ranges.weekStart,
+    monthly: ranges.monthStart,
+  };
 
-  // Yalnızca bugünkü satışları sil (stok ve siparişe dokunma)
+  // İlgili dönemdeki satışları sil (stok ve siparişe dokunma)
   const deleted = await prisma.sale.deleteMany({
-    where: { createdAt: { gte: todayStart } },
+    where: { createdAt: { gte: startDateMap[period] } },
   });
 
+  const label = PERIOD_LABELS[period];
   res.json({
     success: true,
-    data: { deletedSalesCount: deleted.count },
-    message: `Bugünkü ${deleted.count} satış kaydı sıfırlandı`,
+    data: { deletedSalesCount: deleted.count, period },
+    message: `${label} ${deleted.count} satış kaydı sıfırlandı`,
   });
 });

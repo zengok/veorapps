@@ -11,6 +11,7 @@ import SaleScreen from '../screens/SaleScreen';
 import OrderScreen from '../screens/OrderScreen';
 import StockScreen from '../screens/StockScreen';
 import NotificationScreen from '../screens/NotificationScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -94,6 +95,15 @@ function MainTabs() {
           title: 'Stok',
           tabBarLabel: 'Stok',
           tabBarIcon: ({ color, size }) => <Ionicons name="cube-outline" size={size} color={color} />,
+        }}
+      />
+      <Tab.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{
+          title: 'Ayarlar',
+          tabBarLabel: 'Ayarlar',
+          tabBarIcon: ({ color, size }) => <Ionicons name="settings-outline" size={size} color={color} />,
         }}
       />
     </Tab.Navigator>

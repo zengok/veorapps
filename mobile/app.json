@@ -11,7 +11,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false
     },
@@ -22,13 +24,19 @@
       },
       "package": "com.veorcollection.app",
       "versionCode": 1,
-      "permissions": ["android.permission.INTERNET", "android.permission.POST_NOTIFICATIONS"]
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.POST_NOTIFICATIONS"
+      ]
     },
-    "plugins": ["expo-notifications"],
+    "plugins": [
+      "expo-notifications"
+    ],
     "extra": {
       "eas": {
-        "projectId": "BURAYA_EAS_INIT_CALISTIRINCA_OTOMATIK_GELECEK"
+        "projectId": "fc86aaf0-9e1d-497d-b5bc-b461e6f47b57"
       }
-    }
+    },
+    "owner": "veor-collection"
   }
 }

@@ -283,7 +283,7 @@ export default function OrderScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#f5f5f5' },
+  root: { flex: 1, backgroundColor: 'rgba(245,245,245,0.92)' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32 },
   emptyText: { fontSize: 14, color: '#bbb', fontWeight: '500', textAlign: 'center' },
   tabBar: { flexDirection: 'row', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingHorizontal: 12, paddingTop: 8 },

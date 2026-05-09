@@ -133,9 +133,9 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#f5f5f5' },
+  root: { flex: 1, backgroundColor: 'rgba(245,245,245,0.92)' },
   content: { paddingHorizontal: 12, paddingTop: 16, paddingBottom: 24 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f5f5', gap: 12 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(245,245,245,0.92)', gap: 12 },
   greetRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, paddingHorizontal: 4 },
   greetSub: { fontSize: 13, color: '#888' },
   greetName: { fontSize: 22, fontWeight: '800', color: '#1a1a1a' },

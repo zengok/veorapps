@@ -141,7 +141,7 @@ export default function StockScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#f5f5f5' },
+  root: { flex: 1, backgroundColor: 'rgba(245,245,245,0.92)' },
   topBar: {
     backgroundColor: '#fff',
     borderBottomWidth: 1,

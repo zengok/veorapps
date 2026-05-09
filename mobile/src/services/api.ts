@@ -139,6 +139,10 @@ export const dashboardApi = {
     const { data } = await api.get<ApiResponse<DashboardData>>('/dashboard');
     return data;
   },
+  resetSales: async (password: string, period: 'daily' | 'weekly' | 'monthly') => {
+    const { data } = await api.post<ApiResponse<{ deletedSalesCount: number, period: string }>>('/dashboard/reset-sales', { password, period });
+    return data;
+  },
 };
 
 // ── Notifications ─────────────────────────────────────────────────────────────

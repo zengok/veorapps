@@ -2,6 +2,7 @@ import React from 'react';
 import {
   View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useNotifications } from '../contexts/NotificationContext';
@@ -53,7 +54,7 @@ export default function NotificationScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <SafeAreaView style={styles.root} edges={['top']}>
       {/* Başlık + tümünü okundu */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
@@ -83,12 +84,12 @@ export default function NotificationScreen() {
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#f5f5f5' },
+  root: { flex: 1, backgroundColor: 'rgba(245,245,245,0.92)' },
 
   header: {
     flexDirection: 'row',

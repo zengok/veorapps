@@ -254,7 +254,7 @@ export default function SaleScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#f5f5f5' },
+  root: { flex: 1, backgroundColor: 'rgba(245,245,245,0.92)' },
   categoryArea: { backgroundColor: '#fff', paddingTop: 16, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
   changeCatBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 16, paddingBottom: 8 },
   changeCatText: { fontSize: 12, color: '#c9a961', fontWeight: '600' },
