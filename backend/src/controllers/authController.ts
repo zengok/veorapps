@@ -53,3 +53,18 @@ export const me = asyncHandler(async (req: Request, res: Response) => {
 
   res.json({ success: true, data: user });
 });
+
+export const registerPushToken = asyncHandler(async (req: Request, res: Response) => {
+  const { pushToken } = req.body as { pushToken: string };
+  if (!pushToken || typeof pushToken !== 'string') {
+    res.status(400).json({ success: false, error: 'pushToken gerekli' });
+    return;
+  }
+
+  await prisma.user.update({
+    where: { id: req.userId },
+    data: { pushToken },
+  });
+
+  res.json({ success: true, message: 'Push token kaydedildi' });
+});

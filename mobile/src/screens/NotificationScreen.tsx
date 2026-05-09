@@ -8,10 +8,12 @@ import { useNavigation } from '@react-navigation/native';
 import { useNotifications } from '../contexts/NotificationContext';
 import type { AppNotification } from '../types';
 
-const TYPE_ICON: Record<AppNotification['type'], { name: keyof typeof Ionicons.glyphMap; color: string }> = {
+const TYPE_ICON: Record<string, { name: keyof typeof Ionicons.glyphMap; color: string }> = {
   LOW_STOCK: { name: 'warning-outline', color: '#f57c00' },
   OUT_OF_STOCK: { name: 'alert-circle-outline', color: '#d32f2f' },
   INFO: { name: 'information-circle-outline', color: '#1565c0' },
+  SALE: { name: 'cash-outline', color: '#2e7d32' },
+  ORDER: { name: 'bag-handle-outline', color: '#6a1b9a' },
 };
 
 function formatDate(dateStr: string): string {

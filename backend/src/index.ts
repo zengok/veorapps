@@ -10,6 +10,7 @@ import saleRoutes from './routes/sales';
 import orderRoutes from './routes/orders';
 import dashboardRoutes from './routes/dashboard';
 import notificationRoutes from './routes/notifications';
+import importRoutes from './routes/import';
 import { errorHandler } from './middleware/errorHandler';
 
 dotenv.config();
@@ -33,6 +34,7 @@ app.use('/api/sales', saleRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/import', importRoutes);
 
 // Global hata yakalayıcı — en sonda olmalı
 app.use(errorHandler);

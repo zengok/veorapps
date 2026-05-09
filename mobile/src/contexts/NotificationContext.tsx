@@ -8,27 +8,54 @@ import React, {
 } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import { notificationsApi } from '../services/api';
+import { notificationsApi, pushTokenApi } from '../services/api';
 import { useAuth } from './AuthContext';
 import type { AppNotification } from '../types';
 
+// Bildirim geldiğinde ekranda göster, ses çal
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
   }),
 });
 
 const setupAndroidChannel = async () => {
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('veor-alerts', {
-      name: 'Stok Uyarıları',
-      importance: Notifications.AndroidImportance.HIGH,
-      sound: null,
+      name: 'Veor Bildirimler',
+      importance: Notifications.AndroidImportance.MAX,
+      sound: 'default',
+      vibrationPattern: [0, 250, 250, 250],
     });
   }
 };
+
+async function registerForPushNotifications(): Promise<string | null> {
+  try {
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+
+    if (finalStatus !== 'granted') {
+      console.warn('[Push] Bildirim izni reddedildi');
+      return null;
+    }
+
+    const tokenData = await Notifications.getExpoPushTokenAsync({
+      projectId: process.env.EXPO_PUBLIC_PROJECT_ID,
+    });
+    return tokenData.data;
+  } catch (err) {
+    console.error('[Push] Token alınamadı:', err);
+    return null;
+  }
+}
 
 interface NotificationContextValue {
   notifications: AppNotification[];
@@ -46,7 +73,7 @@ export const useNotifications = (): NotificationContextValue => {
   return ctx;
 };
 
-const POLL_INTERVAL = 30_000;
+const POLL_INTERVAL = 20_000; // 20 saniyede bir polling
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -66,7 +93,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const incoming = res.data;
 
-      // Yeni LOW_STOCK / OUT_OF_STOCK → uygulama içi lokal bildirim
+      // Yeni LOW_STOCK / OUT_OF_STOCK uyarıları → ek lokal bildirim (polling backup)
       const newAlerts = incoming.filter(
         (n) =>
           !seenIdsRef.current.has(n.id) &&
@@ -77,6 +104,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
           content: {
             title: alert.title,
             body: alert.message,
+            sound: 'default',
             data: { notificationId: alert.id },
           },
           trigger: null,
@@ -98,12 +126,32 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
       return;
     }
 
-    setupAndroidChannel();
-    Notifications.requestPermissionsAsync();
-    fetchNotifications();
-    intervalRef.current = setInterval(fetchNotifications, POLL_INTERVAL);
+    let cancelled = false;
+
+    const init = async () => {
+      await setupAndroidChannel();
+
+      // Push token al ve backend'e kaydet
+      const token = await registerForPushNotifications();
+      if (token && !cancelled) {
+        try {
+          await pushTokenApi.register(token);
+          console.log('[Push] Token kaydedildi:', token);
+        } catch (err) {
+          console.warn('[Push] Token kaydedilemedi:', err);
+        }
+      }
+
+      if (!cancelled) {
+        fetchNotifications();
+        intervalRef.current = setInterval(fetchNotifications, POLL_INTERVAL);
+      }
+    };
+
+    init();
 
     return () => {
+      cancelled = true;
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [user, fetchNotifications]);

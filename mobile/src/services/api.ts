@@ -162,3 +162,28 @@ export const notificationsApi = {
     return data;
   },
 };
+
+// ── Push Token ────────────────────────────────────────────────────────────────
+export const pushTokenApi = {
+  register: async (pushToken: string) => {
+    const { data } = await api.patch<ApiResponse<null>>('/auth/push-token', { pushToken });
+    return data;
+  },
+};
+
+// ── Excel Import ──────────────────────────────────────────────────────────────
+export const importApi = {
+  fromExcel: async (
+    rows: Record<string, unknown>[],
+    sheetCategory?: 'WOMEN' | 'MEN'
+  ) => {
+    const { data } = await api.post<ApiResponse<{
+      created: number;
+      updated: number;
+      total: number;
+      errors?: string[];
+    }>>('/import/excel', { rows, sheetCategory });
+    return data;
+  },
+};
+

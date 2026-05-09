@@ -1,6 +1,6 @@
 export type Category = 'WOMEN' | 'MEN';
 export type OrderStatus = 'PENDING' | 'COMPLETED';
-export type NotificationType = 'LOW_STOCK' | 'OUT_OF_STOCK' | 'INFO';
+export type NotificationType = 'LOW_STOCK' | 'OUT_OF_STOCK' | 'INFO' | 'SALE' | 'ORDER';
 
 export interface User {
   id: string;

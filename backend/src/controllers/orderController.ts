@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { OrderStatus, NotificationType } from '@prisma/client';
 import { prisma } from '../utils/prisma';
 import { asyncHandler } from '../utils/asyncHandler';
+import { sendPushToAll } from '../utils/pushNotification';
 
 export const createOrder = asyncHandler(async (req: Request, res: Response) => {
   const { productId, quantity, customerNote } = req.body as {
@@ -35,6 +36,23 @@ export const createOrder = asyncHandler(async (req: Request, res: Response) => {
       },
     });
   }
+
+  // ── Tüm ortaklara sipariş push bildirimi ────────────────────────────────
+  const pushTitle = '📦 Yeni Sipariş!';
+  const noteText = order.customerNote ? `\nNot: ${order.customerNote}` : '';
+  const catText = product.category === 'WOMEN' ? 'Kadın' : 'Erkek';
+  const pushBody = `${order.product.name} (${catText}) — ${order.quantity} adet${noteText}`;
+
+  await prisma.notification.create({
+    data: {
+      title: pushTitle,
+      message: pushBody,
+      type: NotificationType.ORDER,
+      productId,
+    },
+  });
+
+  await sendPushToAll(pushTitle, pushBody, { type: 'ORDER', orderId: order.id });
 
   res.status(201).json({ success: true, data: order });
 });
@@ -123,6 +141,27 @@ export const completeOrder = asyncHandler(async (req: Request, res: Response) =>
 
     return { order: completedOrder, sale };
   });
+
+  // ── Tüm ortaklara satış push bildirimi (sipariş tamamlandı) ─────────────
+  const completedProduct = result.order.product;
+  const totalStr = Number(result.sale.totalPrice).toLocaleString('tr-TR', {
+    style: 'currency',
+    currency: 'TRY',
+    maximumFractionDigits: 2,
+  });
+  const cPushTitle = '✅ Sipariş Tamamlandı!';
+  const cPushBody = `${completedProduct.name} — ${result.sale.quantity} adet\nToplam: ${totalStr}`;
+
+  await prisma.notification.create({
+    data: {
+      title: cPushTitle,
+      message: cPushBody,
+      type: NotificationType.SALE,
+      productId: completedProduct.id,
+    },
+  });
+
+  await sendPushToAll(cPushTitle, cPushBody, { type: 'SALE', orderId: result.order.id });
 
   res.json({ success: true, data: result });
 });

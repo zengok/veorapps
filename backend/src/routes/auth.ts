@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
-import { login, me } from '../controllers/authController';
+import { login, me, registerPushToken } from '../controllers/authController';
 import { auth } from '../middleware/auth';
 
 const router = Router();
@@ -12,5 +12,7 @@ const loginValidation = [
 
 router.post('/login', loginValidation, login);
 router.get('/me', auth, me);
+router.patch('/push-token', auth, registerPushToken);
 
 export default router;
+

@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { NotificationType } from '@prisma/client';
 import { prisma } from '../utils/prisma';
 import { asyncHandler } from '../utils/asyncHandler';
+import { sendPushToAll } from '../utils/pushNotification';
+
 
 export const createSale = asyncHandler(async (req: Request, res: Response) => {
   const { productId, quantity } = req.body as { productId: string; quantity: number };
@@ -65,6 +67,34 @@ export const createSale = asyncHandler(async (req: Request, res: Response) => {
       user: { select: { id: true, name: true } },
     },
   });
+
+  // ── Tüm ortaklara push bildirimi gönder ─────────────────────────────────
+  if (sale) {
+    const totalStr = Number(sale.totalPrice).toLocaleString('tr-TR', {
+      style: 'currency',
+      currency: 'TRY',
+      maximumFractionDigits: 2,
+    });
+    const sellerName = sale.user?.name ?? 'Bilinmeyen';
+    const pushTitle = '💰 Satış Yapıldı!';
+    const pushBody = `${sale.product.name} — ${sale.quantity} adet\nToplam: ${totalStr}\nSatan: ${sellerName}`;
+
+    // DB kaydı (uygulama içi bildirim listesi için)
+    await prisma.notification.create({
+      data: {
+        title: pushTitle,
+        message: pushBody,
+        type: NotificationType.SALE,
+        productId: sale.product.id,
+      },
+    });
+
+    // Anlık push (tüm telefonlar)
+    await sendPushToAll(pushTitle, pushBody, {
+      type: 'SALE',
+      saleId: sale.id,
+    });
+  }
 
   res.status(201).json({ success: true, data: sale });
 });

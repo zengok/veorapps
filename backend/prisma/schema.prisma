@@ -23,6 +23,8 @@ enum NotificationType {
   LOW_STOCK
   OUT_OF_STOCK
   INFO
+  SALE
+  ORDER
 }
 
 // ─── Models ───────────────────────────────────────────────────────────────────
@@ -32,6 +34,7 @@ model User {
   email     String   @unique
   password  String
   name      String
+  pushToken String?  // Expo push token
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
