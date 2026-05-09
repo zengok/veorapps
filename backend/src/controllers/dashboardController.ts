@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import bcrypt from 'bcrypt';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { startOfDay, startOfWeek, startOfMonth } from 'date-fns';
 import { prisma } from '../utils/prisma';
@@ -78,5 +79,46 @@ export const getDashboard = asyncHandler(async (_req: Request, res: Response) =>
       lowStockCount,
       unreadNotifications,
     },
+  });
+});
+
+// ── Günlük Veri Sıfırlama ────────────────────────────────────────────────────
+// Sadece bugünkü Sale kayıtlarını siler. Stok ve Sipariş verilerine dokunmaz.
+export const resetDailyData = asyncHandler(async (req: Request, res: Response) => {
+  const { password } = req.body as { password?: string };
+
+  if (!password) {
+    res.status(400).json({ success: false, error: 'Şifre gerekli' });
+    return;
+  }
+
+  // Mevcut kullanıcıyı DB'den çek (şifre hash dahil)
+  const user = await prisma.user.findUnique({
+    where: { id: req.userId },
+  });
+
+  if (!user) {
+    res.status(404).json({ success: false, error: 'Kullanıcı bulunamadı' });
+    return;
+  }
+
+  const isValid = await bcrypt.compare(password, user.password);
+  if (!isValid) {
+    res.status(401).json({ success: false, error: 'Şifre hatalı' });
+    return;
+  }
+
+  // Bugünün başlangıcını İstanbul saatine göre hesapla
+  const { todayStart } = getIstanbulRanges();
+
+  // Yalnızca bugünkü satışları sil (stok ve siparişe dokunma)
+  const deleted = await prisma.sale.deleteMany({
+    where: { createdAt: { gte: todayStart } },
+  });
+
+  res.json({
+    success: true,
+    data: { deletedSalesCount: deleted.count },
+    message: `Bugünkü ${deleted.count} satış kaydı sıfırlandı`,
   });
 });
