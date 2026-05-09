@@ -18,40 +18,51 @@ interface ExcelRow {
   kategori?: string;
 }
 
-function normalizeRow(raw: Record<string, unknown>): ExcelRow {
-  const lower: Record<string, unknown> = {};
+function normalizeRow(raw: Record<string, unknown>): Record<string, unknown> {
+  const normalized: Record<string, unknown> = {};
   for (const key of Object.keys(raw)) {
-    lower[key.toLowerCase().trim()] = raw[key];
+    // Tüm boşlukları sil, küçük harfe çevir
+    const cleanKey = key.toLowerCase().replace(/\s+/g, '').replace(/_/g, '');
+    normalized[cleanKey] = raw[key];
   }
-  return lower as ExcelRow;
+  return normalized;
 }
 
-function extractName(row: ExcelRow): string | null {
-  return (
-    (row.name as string) ||
-    (row.ad as string) ||
-    (row.isim as string) ||
-    (row.urun as string) ||
-    (row['ürün'] as string) ||
-    null
+function extractName(row: Record<string, unknown>): string | null {
+  const keys = Object.keys(row);
+  const nameKey = keys.find(k => 
+    k.includes('ad') || k.includes('isim') || k.includes('ürün') || k.includes('urun') || k.includes('name') || k.includes('parfüm') || k.includes('parfum')
   );
+  if (nameKey && row[nameKey]) return String(row[nameKey]);
+  return null;
 }
 
-function extractPrice(row: ExcelRow): number {
-  const raw = row.price ?? row.fiyat;
-  const n = parseFloat(String(raw).replace(',', '.'));
-  return isNaN(n) ? 0 : n;
+function extractPrice(row: Record<string, unknown>): number {
+  const keys = Object.keys(row);
+  const priceKey = keys.find(k => k.includes('fiyat') || k.includes('price') || k.includes('tutar') || k.includes('bedel'));
+  if (priceKey && row[priceKey] !== undefined) {
+    const raw = String(row[priceKey]).replace(',', '.');
+    const n = parseFloat(raw);
+    if (!isNaN(n)) return n;
+  }
+  return 0;
 }
 
-function extractStock(row: ExcelRow): number {
-  const raw = row.stock ?? row.stok ?? row.adet;
-  const n = parseInt(String(raw), 10);
-  return isNaN(n) ? 0 : n;
+function extractStock(row: Record<string, unknown>): number {
+  const keys = Object.keys(row);
+  const stockKey = keys.find(k => k.includes('stok') || k.includes('stock') || k.includes('adet') || k.includes('miktar') || k.includes('kalan'));
+  if (stockKey && row[stockKey] !== undefined) {
+    const n = parseInt(String(row[stockKey]), 10);
+    if (!isNaN(n)) return n;
+  }
+  return 0;
 }
 
-function extractCategory(row: ExcelRow, sheetCategory?: Category): Category {
-  const raw = ((row.category ?? row.kategori) as string | undefined)?.toLowerCase()?.trim();
-  if (raw) {
+function extractCategory(row: Record<string, unknown>, sheetCategory?: Category): Category {
+  const keys = Object.keys(row);
+  const catKey = keys.find(k => k.includes('kategori') || k.includes('category') || k.includes('cinsiyet') || k.includes('tür') || k.includes('tur'));
+  if (catKey && row[catKey]) {
+    const raw = String(row[catKey]).toLowerCase().trim();
     if (raw.includes('kad') || raw === 'women' || raw === 'w') return 'WOMEN';
     if (raw.includes('erk') || raw === 'men' || raw === 'm') return 'MEN';
   }
