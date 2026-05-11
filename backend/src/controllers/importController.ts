@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { Category } from '@prisma/client';
 import { prisma } from '../utils/prisma';
 import { asyncHandler } from '../utils/asyncHandler';
+import { writeAuditLog } from '../utils/auditLog';
 
 interface ExcelRow {
   name?: string;
@@ -140,6 +141,20 @@ export const importFromExcel = asyncHandler(async (req: Request, res: Response) 
       errors.push(String(err));
     }
   }
+
+  await writeAuditLog({
+    req,
+    action: 'EXCEL_IMPORT',
+    entityType: 'Product',
+    metadata: {
+      sheetCategory: sheetCategory ?? null,
+      receivedRows: rows.length,
+      created,
+      updated,
+      skipped,
+      errors: errors.slice(0, 5),
+    },
+  });
 
   res.json({
     success: true,

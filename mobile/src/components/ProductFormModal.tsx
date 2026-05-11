@@ -17,7 +17,11 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import CategorySelector from './CategorySelector';
 import { productsApi } from '../services/api';
+import { getApiErrorMessage } from '../utils/errors';
 import type { Product, Category } from '../types';
+import { makeTypography, radius, shadow, spacing, touch, type ThemeColors } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
+import AppIcon from './AppIcon';
 
 interface Props {
   visible: boolean;
@@ -43,6 +47,8 @@ const EMPTY_FORM: FormState = {
 };
 
 export default function ProductFormModal({ visible, product, onClose, onSuccess }: Props) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
@@ -117,6 +123,8 @@ export default function ProductFormModal({ visible, product, onClose, onSuccess 
           name: `product_${Date.now()}.${fileType}`,
           type: `image/${fileType}`,
         } as any);
+      } else if (product?.imageUrl && !form.imageUri) {
+        formData.append('removeImage', 'true');
       }
 
       let res;
@@ -133,8 +141,8 @@ export default function ProductFormModal({ visible, product, onClose, onSuccess 
       } else {
         Alert.alert('Hata', res.message ?? 'İşlem başarısız.');
       }
-    } catch (e: any) {
-      Alert.alert('Hata', e?.response?.data?.message ?? 'Bağlantı hatası.');
+    } catch (e) {
+      Alert.alert('Hata', getApiErrorMessage(e, 'İşlem başarısız.'));
     } finally {
       setLoading(false);
     }
@@ -150,27 +158,27 @@ export default function ProductFormModal({ visible, product, onClose, onSuccess 
           {/* Başlık */}
           <View style={styles.header}>
             <Text style={styles.headerTitle}>{isEditing ? 'Ürün Düzenle' : 'Yeni Ürün Ekle'}</Text>
-            <TouchableOpacity onPress={onClose} disabled={loading}>
-              <Ionicons name="close-circle" size={28} color="#ccc" />
+            <TouchableOpacity style={styles.closeBtn} onPress={onClose} disabled={loading} hitSlop={touch.hitSlop}>
+              <Ionicons name="close-circle" size={28} color={colors.faint} />
             </TouchableOpacity>
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {/* Görsel seçici */}
             <View style={styles.imageSection}>
-              <TouchableOpacity style={styles.imagePicker} onPress={pickImage} activeOpacity={0.8}>
+              <TouchableOpacity style={styles.imagePicker} onPress={pickImage} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Ürün görseli seç">
                 {form.imageUri ? (
                   <Image source={{ uri: form.imageUri }} style={styles.imagePreview} resizeMode="cover" />
                 ) : (
                   <View style={styles.imageEmpty}>
-                    <Ionicons name="camera-outline" size={36} color="#c9a961" />
+                    <AppIcon name="upload" size={42} />
                     <Text style={styles.imageEmptyText}>Galeriden Seç</Text>
                   </View>
                 )}
               </TouchableOpacity>
               {form.imageUri && (
-                <TouchableOpacity style={styles.removeImage} onPress={() => setForm((p) => ({ ...p, imageUri: null }))}>
-                  <Ionicons name="close-circle" size={22} color="#d32f2f" />
+                <TouchableOpacity style={styles.removeImage} onPress={() => setForm((p) => ({ ...p, imageUri: null }))} hitSlop={touch.hitSlop}>
+                  <Ionicons name="close-circle" size={24} color={colors.red} />
                 </TouchableOpacity>
               )}
             </View>
@@ -183,7 +191,7 @@ export default function ProductFormModal({ visible, product, onClose, onSuccess 
                 value={form.name}
                 onChangeText={(v) => setForm((p) => ({ ...p, name: v }))}
                 placeholder="Parfüm adını giriniz"
-                placeholderTextColor="#ccc"
+                placeholderTextColor={colors.faint}
                 maxLength={100}
               />
               {errors.name ? <Text style={styles.errorText}>{errors.name}</Text> : null}
@@ -208,7 +216,7 @@ export default function ProductFormModal({ visible, product, onClose, onSuccess 
                   value={form.price}
                   onChangeText={(v) => setForm((p) => ({ ...p, price: v }))}
                   placeholder="0,00"
-                  placeholderTextColor="#ccc"
+                  placeholderTextColor={colors.faint}
                   keyboardType="decimal-pad"
                 />
                 {errors.price ? <Text style={styles.errorText}>{errors.price}</Text> : null}
@@ -221,7 +229,7 @@ export default function ProductFormModal({ visible, product, onClose, onSuccess 
                   value={form.stock}
                   onChangeText={(v) => setForm((p) => ({ ...p, stock: v }))}
                   placeholder="0"
-                  placeholderTextColor="#ccc"
+                  placeholderTextColor={colors.faint}
                   keyboardType="number-pad"
                 />
                 {errors.stock ? <Text style={styles.errorText}>{errors.stock}</Text> : null}
@@ -240,10 +248,10 @@ export default function ProductFormModal({ visible, product, onClose, onSuccess 
                 activeOpacity={0.85}
               >
                 {loading ? (
-                  <ActivityIndicator color="#1a1a1a" size="small" />
+                  <ActivityIndicator color={colors.black} size="small" />
                 ) : (
                   <>
-                    <Ionicons name="checkmark-outline" size={18} color="#1a1a1a" />
+                  <AppIcon name="check" size={22} />
                     <Text style={styles.saveBtnText}>Kaydet</Text>
                   </>
                 )}
@@ -256,52 +264,64 @@ export default function ProductFormModal({ visible, product, onClose, onSuccess 
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
+const createStyles = (colors: ThemeColors) => {
+  const typography = makeTypography(colors);
+  return StyleSheet.create({
+  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.overlay },
   sheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.sheet,
+    borderTopRightRadius: radius.sheet,
+    padding: spacing.xxl,
     maxHeight: '92%',
+    ...shadow.lifted,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: spacing.xl,
   },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: '#1a1a1a' },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: colors.ink },
+  closeBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
 
-  imageSection: { alignItems: 'center', marginBottom: 20, position: 'relative' },
+  imageSection: { alignItems: 'center', marginBottom: spacing.xl, position: 'relative' },
   imagePicker: {
     width: 120,
     height: 120,
-    borderRadius: 16,
+    borderRadius: radius.xl,
     overflow: 'hidden',
     borderWidth: 2,
-    borderColor: '#e8d5a3',
+    borderColor: colors.border,
     borderStyle: 'dashed',
   },
   imagePreview: { width: 120, height: 120 },
-  imageEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fdf6e3' },
-  imageEmptyText: { fontSize: 11, color: '#c9a961', fontWeight: '600', marginTop: 6 },
-  removeImage: { position: 'absolute', top: -6, right: '28%' },
+  imageEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceWarm },
+  imageEmptyText: { fontSize: 11, color: colors.gold, fontWeight: '700', marginTop: 6 },
+  removeImage: {
+    position: 'absolute',
+    top: -10,
+    right: '26%',
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
-  field: { marginBottom: 16 },
-  label: { fontSize: 12, fontWeight: '700', color: '#888', marginBottom: 6, letterSpacing: 0.5 },
+  field: { marginBottom: spacing.lg },
+  label: { ...typography.sectionLabel, marginBottom: 6 },
   input: {
-    backgroundColor: '#f9f9f9',
-    borderRadius: 10,
+    backgroundColor: colors.surfaceSoft,
+    borderRadius: radius.md,
     borderWidth: 1.5,
-    borderColor: '#e0e0e0',
+    borderColor: colors.borderSoft,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: '#1a1a1a',
+    color: colors.ink,
   },
-  inputError: { borderColor: '#d32f2f' },
-  errorText: { fontSize: 11, color: '#d32f2f', marginTop: 4, fontWeight: '500' },
+  inputError: { borderColor: colors.red, backgroundColor: colors.redBg },
+  errorText: { fontSize: 11, color: colors.red, marginTop: 4, fontWeight: '700' },
 
   row2: { flexDirection: 'row', alignItems: 'flex-start' },
 
@@ -309,12 +329,12 @@ const styles = StyleSheet.create({
   cancelBtn: {
     flex: 1,
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: radius.lg,
     borderWidth: 1.5,
-    borderColor: '#e0e0e0',
+    borderColor: colors.borderSoft,
     alignItems: 'center',
   },
-  cancelBtnText: { fontSize: 15, fontWeight: '700', color: '#888' },
+  cancelBtnText: { fontSize: 15, fontWeight: '700', color: colors.inkMuted },
   saveBtn: {
     flex: 2,
     flexDirection: 'row',
@@ -322,9 +342,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: '#c9a961',
+    borderRadius: radius.lg,
+    backgroundColor: colors.gold,
   },
-  saveBtnDisabled: { backgroundColor: '#ddd' },
-  saveBtnText: { fontSize: 15, fontWeight: '800', color: '#1a1a1a' },
-});
+  saveBtnDisabled: { backgroundColor: colors.faint },
+  saveBtnText: { fontSize: 15, fontWeight: '800', color: colors.ink },
+  });
+};

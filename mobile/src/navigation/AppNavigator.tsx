@@ -2,7 +2,6 @@ import React from 'react';
 import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import LoginScreen from '../screens/LoginScreen';
@@ -12,26 +11,28 @@ import OrderScreen from '../screens/OrderScreen';
 import StockScreen from '../screens/StockScreen';
 import NotificationScreen from '../screens/NotificationScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import { radius, touch, type ThemeColors } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
+import AppIcon, { type AppIconName } from '../components/AppIcon';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-const C = {
-  black: '#1a1a1a',
-  gold: '#c9a961',
-  gray: '#666666',
-  tabBorder: '#2a2a2a',
-  badge: '#e05555',
-  badgeText: '#ffffff',
-};
-
 function NotificationBell({ onPress }: { onPress: () => void }) {
   const { unreadCount } = useNotifications();
+  const { colors } = useTheme();
   return (
-    <TouchableOpacity style={styles.bell} activeOpacity={0.7} onPress={onPress}>
-      <Ionicons name="notifications-outline" size={22} color={C.gold} />
+    <TouchableOpacity
+      style={styles.bell}
+      activeOpacity={0.7}
+      onPress={onPress}
+      hitSlop={touch.hitSlop}
+      accessibilityRole="button"
+      accessibilityLabel="Bildirimleri aç"
+    >
+      <AppIcon name="bell" size={24} />
       {unreadCount > 0 && (
-        <View style={styles.badge}>
+        <View style={[styles.badge, { backgroundColor: colors.red }]}>
           <Text style={styles.badgeText}>
             {unreadCount > 99 ? '99+' : String(unreadCount)}
           </Text>
@@ -41,33 +42,40 @@ function NotificationBell({ onPress }: { onPress: () => void }) {
   );
 }
 
-const tabScreenOptions = (navigation: any) => ({
-  headerStyle: { backgroundColor: C.black, elevation: 0, shadowOpacity: 0 },
-  headerTintColor: C.gold,
-  headerTitleStyle: { fontWeight: '700' as const, letterSpacing: 1, fontSize: 15 },
+const tabScreenOptions = (navigation: any, colors: ThemeColors) => ({
+  headerStyle: { backgroundColor: colors.headerBg, elevation: 0, shadowOpacity: 0 },
+  headerTintColor: colors.gold,
+  headerTitleStyle: { fontWeight: '800' as const, letterSpacing: 0, fontSize: 17, color: colors.ink },
   headerRight: () => <NotificationBell onPress={() => navigation.navigate('Notifications')} />,
+  tabBarHideOnKeyboard: true,
   tabBarStyle: {
-    backgroundColor: C.black,
-    borderTopColor: C.tabBorder,
+    backgroundColor: colors.tabBg,
+    borderTopColor: colors.borderSoft,
     borderTopWidth: 1,
-    height: 60,
-    paddingBottom: 8,
+    minHeight: 66,
+    paddingTop: 6,
+    paddingBottom: 10,
   },
-  tabBarActiveTintColor: C.gold,
-  tabBarInactiveTintColor: C.gray,
+  tabBarActiveTintColor: colors.gold,
+  tabBarInactiveTintColor: colors.inkMuted,
   tabBarLabelStyle: { fontSize: 10, fontWeight: '600' as const },
 });
 
+const tabIcon = (name: AppIconName) => ({ focused, size }: { focused: boolean; color: string; size: number }) => (
+  <AppIcon name={name} size={size + 2} opacity={focused ? 1 : 0.54} />
+);
+
 function MainTabs() {
+  const { colors } = useTheme();
   return (
-    <Tab.Navigator screenOptions={({ navigation }) => tabScreenOptions(navigation)}>
+    <Tab.Navigator screenOptions={({ navigation }) => tabScreenOptions(navigation, colors)}>
       <Tab.Screen
         name="Home"
         component={HomeScreen}
         options={{
           title: 'Ana Sayfa',
           tabBarLabel: 'Ana Sayfa',
-          tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} />,
+          tabBarIcon: tabIcon('home'),
         }}
       />
       <Tab.Screen
@@ -76,7 +84,7 @@ function MainTabs() {
         options={{
           title: 'Satış Gir',
           tabBarLabel: 'Satış',
-          tabBarIcon: ({ color, size }) => <Ionicons name="cash-outline" size={size} color={color} />,
+          tabBarIcon: tabIcon('sale'),
         }}
       />
       <Tab.Screen
@@ -85,7 +93,7 @@ function MainTabs() {
         options={{
           title: 'Siparişler',
           tabBarLabel: 'Sipariş',
-          tabBarIcon: ({ color, size }) => <Ionicons name="list-outline" size={size} color={color} />,
+          tabBarIcon: tabIcon('orders'),
         }}
       />
       <Tab.Screen
@@ -94,7 +102,7 @@ function MainTabs() {
         options={{
           title: 'Stok',
           tabBarLabel: 'Stok',
-          tabBarIcon: ({ color, size }) => <Ionicons name="cube-outline" size={size} color={color} />,
+          tabBarIcon: tabIcon('stock'),
         }}
       />
       <Tab.Screen
@@ -103,7 +111,7 @@ function MainTabs() {
         options={{
           title: 'Ayarlar',
           tabBarLabel: 'Ayarlar',
-          tabBarIcon: ({ color, size }) => <Ionicons name="settings-outline" size={size} color={color} />,
+          tabBarIcon: tabIcon('settings'),
         }}
       />
     </Tab.Navigator>
@@ -148,13 +156,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 2,
     right: 2,
-    backgroundColor: C.badge,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     minWidth: 16,
     height: 16,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 3,
   },
-  badgeText: { color: C.badgeText, fontSize: 9, fontWeight: '700' },
+  badgeText: { color: '#ffffff', fontSize: 9, fontWeight: '700' },
 });

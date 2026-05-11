@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View, Text, FlatList, StyleSheet, RefreshControl,
   TouchableOpacity, Alert, ActivityIndicator, Modal, ScrollView,
@@ -7,23 +7,32 @@ import { Ionicons } from '@expo/vector-icons';
 import CategorySelector from '../components/CategorySelector';
 import StockProductCard from '../components/StockProductCard';
 import ProductFormModal from '../components/ProductFormModal';
+import EmptyState from '../components/EmptyState';
+import SearchBar from '../components/SearchBar';
+import AppIcon from '../components/AppIcon';
 import { productsApi, importApi } from '../services/api';
 import { pickAndParseExcel } from '../utils/excelImport';
+import { getApiErrorMessage } from '../utils/errors';
 import type { Product, Category } from '../types';
+import { radius, shadow, spacing, touch, type ThemeColors } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function StockScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Excel import state
   const [importing, setImporting] = useState(false);
   const [importResultVisible, setImportResultVisible] = useState(false);
   const [importResult, setImportResult] = useState<{
-    created: number; updated: number; total: number; errors?: string[];
+    created: number; updated: number; total: number; skipped?: number; errors?: string[];
   } | null>(null);
 
   const fetchProducts = useCallback(async (category: Category) => {
@@ -31,12 +40,13 @@ export default function StockScreen() {
     try {
       const res = await productsApi.getAll(category);
       if (res.success && res.data) setProducts(res.data);
-    } catch { Alert.alert('Hata', 'Ürünler yüklenemedi.'); }
+    } catch (e) { Alert.alert('Hata', getApiErrorMessage(e, 'Ürünler yüklenemedi.')); }
     finally { setLoading(false); }
   }, []);
 
   const handleCategoryChange = useCallback((cat: Category) => {
     setSelectedCategory(cat);
+    setSearchQuery('');
     fetchProducts(cat);
   }, [fetchProducts]);
 
@@ -72,7 +82,7 @@ export default function StockScreen() {
               if (res.success) {
                 setProducts((prev) => prev.filter((p) => p.id !== product.id));
               } else Alert.alert('Hata', res.message ?? 'Silme başarısız.');
-            } catch { Alert.alert('Hata', 'Bağlantı hatası.'); }
+            } catch (e) { Alert.alert('Hata', getApiErrorMessage(e, 'Silme başarısız.')); }
           },
         },
       ]
@@ -82,6 +92,14 @@ export default function StockScreen() {
   const handleFormSuccess = useCallback(() => {
     if (selectedCategory) fetchProducts(selectedCategory);
   }, [selectedCategory, fetchProducts]);
+
+  const filteredProducts = useMemo(() => {
+    const q = searchQuery.trim().toLocaleLowerCase('tr-TR');
+    if (!q) return products;
+    return products.filter((product) =>
+      product.name.toLocaleLowerCase('tr-TR').includes(q)
+    );
+  }, [products, searchQuery]);
 
   // ── Excel Import ─────────────────────────────────────────────────────────────
   const handleExcelImport = useCallback(async () => {
@@ -128,6 +146,7 @@ export default function StockScreen() {
 
       let totalCreated = 0;
       let totalUpdated = 0;
+      let totalSkipped = 0;
       const allErrors: string[] = [];
 
       // Kadın parfümleri gönder
@@ -136,6 +155,7 @@ export default function StockScreen() {
         if (res.success && res.data) {
           totalCreated += res.data.created;
           totalUpdated += res.data.updated;
+          totalSkipped += res.data.skipped ?? 0;
           if (res.data.errors) allErrors.push(...res.data.errors);
         }
       }
@@ -146,6 +166,7 @@ export default function StockScreen() {
         if (res.success && res.data) {
           totalCreated += res.data.created;
           totalUpdated += res.data.updated;
+          totalSkipped += res.data.skipped ?? 0;
           if (res.data.errors) allErrors.push(...res.data.errors);
         }
       }
@@ -156,6 +177,7 @@ export default function StockScreen() {
         if (res.success && res.data) {
           totalCreated += res.data.created;
           totalUpdated += res.data.updated;
+          totalSkipped += res.data.skipped ?? 0;
           if (res.data.errors) allErrors.push(...res.data.errors);
         }
       }
@@ -164,6 +186,7 @@ export default function StockScreen() {
         created: totalCreated,
         updated: totalUpdated,
         total: totalCreated + totalUpdated,
+        skipped: totalSkipped,
         errors: allErrors.length > 0 ? allErrors : undefined,
       });
       setImportResultVisible(true);
@@ -172,8 +195,7 @@ export default function StockScreen() {
       if (selectedCategory) fetchProducts(selectedCategory);
 
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Excel okunamadı.';
-      Alert.alert('Hata', msg);
+      Alert.alert('Hata', getApiErrorMessage(err, 'Excel okunamadı.'));
     } finally {
       setImporting(false);
     }
@@ -186,6 +208,11 @@ export default function StockScreen() {
         <View style={styles.categoryWrap}>
           <CategorySelector selected={selectedCategory} onChange={handleCategoryChange} />
         </View>
+        {selectedCategory && (
+          <View style={styles.searchWrap}>
+            <SearchBar value={searchQuery} onChangeText={setSearchQuery} />
+          </View>
+        )}
         <View style={styles.btnRow}>
           {/* Excel yükle butonu */}
           <TouchableOpacity
@@ -193,20 +220,21 @@ export default function StockScreen() {
             onPress={handleExcelImport}
             activeOpacity={0.85}
             disabled={importing}
+            hitSlop={touch.hitSlop}
           >
             {importing ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color="#ffffff" />
             ) : (
               <>
-                <Ionicons name="document-attach-outline" size={16} color="#fff" />
+                <AppIcon name="upload" size={22} />
                 <Text style={styles.excelBtnText}>Excel Yükle</Text>
               </>
             )}
           </TouchableOpacity>
 
           {/* Yeni ürün butonu */}
-          <TouchableOpacity style={styles.addBtn} onPress={handleNewProduct} activeOpacity={0.85}>
-            <Ionicons name="add" size={18} color="#fff" />
+          <TouchableOpacity style={styles.addBtn} onPress={handleNewProduct} activeOpacity={0.85} hitSlop={touch.hitSlop}>
+            <AppIcon name="add" size={22} />
             <Text style={styles.addBtnText}>Yeni Ürün</Text>
           </TouchableOpacity>
         </View>
@@ -215,40 +243,49 @@ export default function StockScreen() {
       {/* İçerik */}
       {!selectedCategory ? (
         <View style={styles.center}>
-          <Ionicons name="grid-outline" size={52} color="#ddd" />
-          <Text style={styles.emptyText}>Ürünleri görmek için kategori seçin</Text>
+          <EmptyState
+            icon="grid-outline"
+            title="Kategori seçin"
+            description="Stok listesini yönetmek için kadın veya erkek parfüm kategorisini seçin."
+          />
         </View>
       ) : loading ? (
-        <View style={styles.center}><ActivityIndicator size="large" color="#c9a961" /></View>
+        <View style={styles.center}><ActivityIndicator size="large" color={colors.gold} /></View>
       ) : (
         <FlatList
-          data={products}
+          data={filteredProducts}
           keyExtractor={(p) => p.id}
           renderItem={({ item }) => (
             <StockProductCard product={item} onEdit={handleEdit} onDelete={handleDelete} />
           )}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#c9a961']} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.gold]} />}
           ListHeaderComponent={
-            products.length > 0 ? (
+            filteredProducts.length > 0 ? (
               <View style={styles.listHeader}>
                 <Text style={styles.listHeaderTitle}>
                   {selectedCategory === 'WOMEN' ? 'Kadın' : 'Erkek'} Parfümleri
                 </Text>
-                <Text style={styles.listHeaderCount}>{products.length} ürün</Text>
+                <Text style={styles.listHeaderCount}>
+                  {filteredProducts.length}{searchQuery ? ` / ${products.length}` : ''} ürün
+                </Text>
               </View>
             ) : null
           }
           ListEmptyComponent={
             <View style={styles.center}>
-              <Ionicons name="cube-outline" size={52} color="#ddd" />
-              <Text style={styles.emptyText}>Bu kategoride ürün bulunamadı</Text>
-              <TouchableOpacity style={styles.addFirstBtn} onPress={handleNewProduct}>
-                <Ionicons name="add-circle-outline" size={16} color="#c9a961" />
+              <EmptyState
+                icon={products.length === 0 ? 'cube-outline' : 'search-outline'}
+                title={products.length === 0 ? 'Bu kategoride ürün bulunamadı' : 'Arama sonucu yok'}
+                description={products.length === 0 ? 'İlk ürünü ekleyerek stok listesini oluşturun.' : 'Ürün adını farklı bir şekilde aramayı deneyin.'}
+                compact
+              />
+              <TouchableOpacity style={styles.addFirstBtn} onPress={handleNewProduct} hitSlop={touch.hitSlop}>
+                <AppIcon name="add" size={20} />
                 <Text style={styles.addFirstBtnText}>İlk ürünü ekle</Text>
               </TouchableOpacity>
             </View>
           }
-          contentContainerStyle={products.length === 0 ? { flex: 1 } : { paddingBottom: 24, paddingTop: 8 }}
+          contentContainerStyle={filteredProducts.length === 0 ? { flex: 1 } : { paddingBottom: 24, paddingTop: 8 }}
           showsVerticalScrollIndicator={false}
         />
       )}
@@ -271,9 +308,9 @@ export default function StockScreen() {
         <View style={styles.resultOverlay}>
           <View style={styles.resultSheet}>
             <View style={styles.resultIconWrap}>
-              <Ionicons name="checkmark-circle" size={56} color="#2e7d32" />
+              <Ionicons name="checkmark-circle" size={56} color={colors.green} />
             </View>
-            <Text style={styles.resultTitle}>Excel İçe Aktarıldı!</Text>
+            <Text style={styles.resultTitle} numberOfLines={2}>Excel İçe Aktarıldı!</Text>
 
             <View style={styles.resultStats}>
               <View style={styles.statItem}>
@@ -292,9 +329,15 @@ export default function StockScreen() {
               </View>
             </View>
 
+            {(importResult?.skipped ?? 0) > 0 && (
+              <Text style={styles.skippedText}>
+                {importResult?.skipped} satır ürün adı bulunamadığı için atlandı.
+              </Text>
+            )}
+
             {importResult?.errors && importResult.errors.length > 0 && (
               <View style={styles.errorBox}>
-                <Text style={styles.errorTitle}>⚠️ Bazı satırlarda hata oluştu:</Text>
+                <Text style={styles.errorTitle}>Bazı satırlarda hata oluştu:</Text>
                 <ScrollView style={{ maxHeight: 80 }}>
                   {importResult.errors.map((e, i) => (
                     <Text key={i} style={styles.errorText}>{e}</Text>
@@ -306,6 +349,7 @@ export default function StockScreen() {
             <TouchableOpacity
               style={styles.resultCloseBtn}
               onPress={() => setImportResultVisible(false)}
+              hitSlop={touch.hitSlop}
             >
               <Text style={styles.resultCloseBtnText}>Tamam</Text>
             </TouchableOpacity>
@@ -316,15 +360,16 @@ export default function StockScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: 'rgba(245,245,245,0.92)' },
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.appBg },
   topBar: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: colors.borderSoft,
     paddingBottom: 12,
   },
   categoryWrap: { paddingTop: 16 },
+  searchWrap: { marginTop: 6 },
   btnRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -337,79 +382,91 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#1565c0',
-    borderRadius: 10,
+    backgroundColor: colors.mode === 'dark' ? 'transparent' : colors.blue,
+    borderWidth: colors.mode === 'dark' ? 1.5 : 0,
+    borderColor: colors.gold,
+    borderRadius: radius.md,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  excelBtnText: { fontSize: 12, fontWeight: '700', color: '#fff' },
+  excelBtnText: { fontSize: 12, fontWeight: '800', color: colors.mode === 'dark' ? colors.ink : '#ffffff' },
   btnDisabled: { opacity: 0.5 },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#2e7d32',
-    borderRadius: 10,
+    backgroundColor: colors.gold,
+    borderRadius: radius.md,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
-  addBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  addBtnText: { fontSize: 13, fontWeight: '800', color: colors.black },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32 },
-  emptyText: { fontSize: 14, color: '#bbb', fontWeight: '500', textAlign: 'center' },
+  emptyText: { fontSize: 14, color: colors.faint, fontWeight: '500', textAlign: 'center' },
   addFirstBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
-  addFirstBtnText: { fontSize: 14, color: '#c9a961', fontWeight: '600' },
+  addFirstBtnText: { fontSize: 14, color: colors.gold, fontWeight: '700' },
   listHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 },
-  listHeaderTitle: { fontSize: 14, fontWeight: '700', color: '#1a1a1a' },
-  listHeaderCount: { fontSize: 12, color: '#c9a961', fontWeight: '600' },
+  listHeaderTitle: { fontSize: 14, fontWeight: '700', color: colors.ink },
+  listHeaderCount: { fontSize: 12, color: colors.gold, fontWeight: '700' },
 
   // Import result modal
   resultOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: colors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    padding: spacing.xxl,
   },
   resultSheet: {
-    backgroundColor: '#fff',
-    borderRadius: 24,
+    backgroundColor: colors.surface,
+    borderRadius: radius.sheet,
     padding: 28,
     width: '100%',
     maxWidth: 340,
     alignItems: 'center',
+    ...shadow.lifted,
   },
   resultIconWrap: { marginBottom: 12 },
-  resultTitle: { fontSize: 20, fontWeight: '800', color: '#1a1a1a', marginBottom: 20 },
+  resultTitle: { fontSize: 20, fontWeight: '800', color: colors.ink, marginBottom: 20 },
   resultStats: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f9f9f9',
-    borderRadius: 16,
+    backgroundColor: colors.surfaceSoft,
+    borderRadius: radius.xl,
     paddingVertical: 16,
     paddingHorizontal: 12,
     width: '100%',
     marginBottom: 20,
   },
   statItem: { flex: 1, alignItems: 'center' },
-  statNum: { fontSize: 26, fontWeight: '900', color: '#1a1a1a' },
-  statLabel: { fontSize: 11, color: '#888', fontWeight: '600', marginTop: 2 },
-  statDivider: { width: 1, height: 40, backgroundColor: '#e0e0e0' },
+  statNum: { fontSize: 26, fontWeight: '900', color: colors.ink },
+  statLabel: { fontSize: 11, color: colors.inkMuted, fontWeight: '700', marginTop: 2 },
+  statDivider: { width: 1, height: 40, backgroundColor: colors.borderSoft },
+  skippedText: {
+    width: '100%',
+    color: colors.inkMuted,
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: -8,
+    marginBottom: 16,
+  },
   errorBox: {
-    backgroundColor: '#fff3e0',
-    borderRadius: 10,
+    backgroundColor: colors.orangeBg,
+    borderRadius: radius.md,
     padding: 12,
     width: '100%',
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#ffcc80',
+    borderColor: colors.orange,
   },
-  errorTitle: { fontSize: 12, fontWeight: '700', color: '#e65100', marginBottom: 4 },
-  errorText: { fontSize: 11, color: '#bf360c', lineHeight: 16 },
+  errorTitle: { fontSize: 12, fontWeight: '800', color: colors.orange, marginBottom: 4 },
+  errorText: { fontSize: 11, color: colors.orange, lineHeight: 16 },
   resultCloseBtn: {
-    backgroundColor: '#c9a961',
-    borderRadius: 14,
+    backgroundColor: colors.gold,
+    borderRadius: radius.lg,
     paddingVertical: 14,
     paddingHorizontal: 40,
   },
-  resultCloseBtnText: { fontSize: 15, fontWeight: '800', color: '#1a1a1a' },
+  resultCloseBtnText: { fontSize: 15, fontWeight: '800', color: colors.ink },
 });

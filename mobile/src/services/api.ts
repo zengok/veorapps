@@ -6,6 +6,7 @@ import type {
   Product,
   Sale,
   SalesListResponse,
+  MonthlySalesExportResponse,
   Order,
   DashboardData,
   AppNotification,
@@ -90,8 +91,12 @@ export const productsApi = {
 
 // ── Sales ─────────────────────────────────────────────────────────────────────
 export const salesApi = {
-  create: async (productId: string, quantity: number) => {
-    const { data } = await api.post<ApiResponse<Sale>>('/sales', { productId, quantity });
+  create: async (productId: string, quantity: number, customerNote?: string) => {
+    const { data } = await api.post<ApiResponse<Sale>>('/sales', {
+      productId,
+      quantity,
+      customerNote,
+    });
     return data;
   },
   getAll: async (params?: {
@@ -101,6 +106,13 @@ export const salesApi = {
     endDate?: string;
   }) => {
     const { data } = await api.get<ApiResponse<SalesListResponse>>('/sales', { params });
+    return data;
+  },
+  exportMonthly: async (period: string) => {
+    const { data } = await api.get<ApiResponse<MonthlySalesExportResponse>>(
+      '/sales/export/monthly',
+      { params: { period, encoding: 'base64' }, timeout: 30_000 }
+    );
     return data;
   },
 };
@@ -161,6 +173,10 @@ export const notificationsApi = {
     const { data } = await api.patch<ApiResponse<null>>('/notifications/read-all');
     return data;
   },
+  delete: async (id: string) => {
+    const { data } = await api.delete<ApiResponse<null>>(`/notifications/${id}`);
+    return data;
+  },
 };
 
 // ── Push Token ────────────────────────────────────────────────────────────────
@@ -181,9 +197,9 @@ export const importApi = {
       created: number;
       updated: number;
       total: number;
+      skipped?: number;
       errors?: string[];
     }>>('/import/excel', { rows, sheetCategory });
     return data;
   },
 };
-

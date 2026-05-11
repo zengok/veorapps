@@ -1,12 +1,14 @@
 export type Category = 'WOMEN' | 'MEN';
 export type OrderStatus = 'PENDING' | 'COMPLETED';
 export type NotificationType = 'LOW_STOCK' | 'OUT_OF_STOCK' | 'INFO' | 'SALE' | 'ORDER';
+export type UserRole = 'ADMIN' | 'PARTNER' | 'VIEWER';
 
 export interface User {
   id: string;
   email: string;
   name: string;
-  createdAt: string;
+  role: UserRole;
+  createdAt?: string;
 }
 
 export interface Product {
@@ -29,6 +31,7 @@ export interface Sale {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
+  customerNote: string | null;
   createdAt: string;
   product?: Pick<Product, 'id' | 'name' | 'category'>;
   user?: Pick<User, 'id' | 'name'>;
@@ -78,5 +81,13 @@ export interface ApiResponse<T> {
 
 export interface SalesListResponse {
   sales: Sale[];
+  total: number;
+}
+
+export interface MonthlySalesExportResponse {
+  filename: string;
+  period: string;
+  mimeType: string;
+  base64: string;
   total: number;
 }

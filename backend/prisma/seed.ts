@@ -1,4 +1,4 @@
-import { PrismaClient, Category } from '@prisma/client';
+import { PrismaClient, Category, UserRole } from '@prisma/client';
 import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -12,18 +12,18 @@ async function main() {
   const users = await Promise.all([
     prisma.user.upsert({
       where: { email: 'ortak1@veor.com' },
-      update: {},
-      create: { email: 'ortak1@veor.com', password: hashedPassword, name: 'Ortak 1' },
+      update: { name: 'Gökhan Özen', role: UserRole.ADMIN },
+      create: { email: 'ortak1@veor.com', password: hashedPassword, name: 'Gökhan Özen', role: UserRole.ADMIN },
     }),
     prisma.user.upsert({
       where: { email: 'ortak2@veor.com' },
-      update: {},
-      create: { email: 'ortak2@veor.com', password: hashedPassword, name: 'Ortak 2' },
+      update: { name: 'Batuhan Işık', role: UserRole.ADMIN },
+      create: { email: 'ortak2@veor.com', password: hashedPassword, name: 'Batuhan Işık', role: UserRole.ADMIN },
     }),
     prisma.user.upsert({
       where: { email: 'ortak3@veor.com' },
-      update: {},
-      create: { email: 'ortak3@veor.com', password: hashedPassword, name: 'Ortak 3' },
+      update: { name: 'Barış Egemen Bulut', role: UserRole.ADMIN },
+      create: { email: 'ortak3@veor.com', password: hashedPassword, name: 'Barış Egemen Bulut', role: UserRole.ADMIN },
     }),
   ]);
 

@@ -181,8 +181,8 @@ Kısa özet:
 
 | Hesap | E-posta | Şifre |
 |---|---|---|
-| Ortak 1 | `ortak1@veor.com` | `veor2025` |
-| Ortak 2 | `ortak2@veor.com` | `veor2025` |
-| Ortak 3 | `ortak3@veor.com` | `veor2025` |
+| Gökhan Özen | `ortak1@veor.com` | `veor2025` |
+| Batuhan Işık | `ortak2@veor.com` | `veor2025` |
+| Barış Egemen Bulut | `ortak3@veor.com` | `veor2025` |
 
 > ⚠️ Production'da şifreleri değiştirin!

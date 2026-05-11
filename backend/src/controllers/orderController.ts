@@ -3,6 +3,7 @@ import { OrderStatus, NotificationType } from '@prisma/client';
 import { prisma } from '../utils/prisma';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendPushToAll } from '../utils/pushNotification';
+import { writeAuditLog } from '../utils/auditLog';
 
 function parsePositiveQuantity(quantity: unknown): number {
   const qty = Number(quantity);
@@ -79,6 +80,19 @@ export const createOrder = asyncHandler(async (req: Request, res: Response) => {
 
   await sendPushToAll(pushTitle, pushBody, { type: 'ORDER', orderId: order.id });
 
+  await writeAuditLog({
+    req,
+    action: 'ORDER_CREATE',
+    entityType: 'Order',
+    entityId: order.id,
+    metadata: {
+      productId,
+      productName: order.product.name,
+      quantity: order.quantity,
+      customerNote: order.customerNote,
+    },
+  });
+
   res.status(201).json({ success: true, data: order });
 });
 
@@ -151,6 +165,7 @@ export const completeOrder = asyncHandler(async (req: Request, res: Response) =>
         quantity: order.quantity,
         unitPrice: product.price,
         totalPrice: Number(product.price) * order.quantity,
+        customerNote: order.customerNote,
       },
     });
 
@@ -206,6 +221,20 @@ export const completeOrder = asyncHandler(async (req: Request, res: Response) =>
 
   await sendPushToAll(cPushTitle, cPushBody, { type: 'SALE', orderId: result.order.id });
 
+  await writeAuditLog({
+    req,
+    action: 'ORDER_COMPLETE',
+    entityType: 'Order',
+    entityId: result.order.id,
+    metadata: {
+      saleId: result.sale.id,
+      productId: completedProduct.id,
+      productName: completedProduct.name,
+      quantity: result.sale.quantity,
+      totalPrice: Number(result.sale.totalPrice),
+    },
+  });
+
   res.json({ success: true, data: result });
 });
 
@@ -222,6 +251,18 @@ export const cancelOrder = asyncHandler(async (req: Request, res: Response) => {
   }
 
   await prisma.order.delete({ where: { id: order.id } });
+
+  await writeAuditLog({
+    req,
+    action: 'ORDER_CANCEL',
+    entityType: 'Order',
+    entityId: order.id,
+    metadata: {
+      productId: order.productId,
+      quantity: order.quantity,
+      customerNote: order.customerNote,
+    },
+  });
 
   res.json({ success: true, message: 'Sipariş iptal edildi' });
 });

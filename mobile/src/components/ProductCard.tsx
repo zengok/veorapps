@@ -10,6 +10,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import type { Product } from '../types';
 import { formatCurrency } from '../utils/formatters';
+import StatusBadge from './StatusBadge';
+import { radius, shadow, spacing, type ThemeColors } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
+import AppIcon from './AppIcon';
 
 interface Props {
   product: Product;
@@ -18,8 +22,11 @@ interface Props {
 }
 
 export default function ProductCard({ product, onPress, isSelected }: Props) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const scale = useRef(new Animated.Value(1)).current;
   const isOutOfStock = product.stock === 0;
+  const isLowStock = product.stock > 0 && product.stock <= 5;
 
   useEffect(() => {
     Animated.spring(scale, {
@@ -51,15 +58,10 @@ export default function ProductCard({ product, onPress, isSelected }: Props) {
             />
           ) : (
             <View style={styles.imagePlaceholder}>
-              <Ionicons name="flower-outline" size={30} color="#c9a961" />
+              <AppIcon name="perfume" size={42} />
             </View>
           )}
-          {/* Stok rozeti */}
-          {isOutOfStock && (
-            <View style={styles.stockBadge}>
-              <Text style={styles.stockBadgeText}>STOKTA YOK</Text>
-            </View>
-          )}
+          {isOutOfStock ? <View style={styles.imageVeil} /> : null}
         </View>
 
         {/* Ürün bilgisi */}
@@ -71,15 +73,17 @@ export default function ProductCard({ product, onPress, isSelected }: Props) {
             {product.category === 'WOMEN' ? 'Kadın' : 'Erkek'}
           </Text>
           <Text style={styles.price}>{formatCurrency(Number(product.price))}</Text>
-          <Text style={[styles.stock, isOutOfStock && styles.stockZero]}>
-            {isOutOfStock ? 'Stok yok' : `${product.stock} adet`}
-          </Text>
+          <StatusBadge
+            tone={isOutOfStock ? 'danger' : isLowStock ? 'warning' : 'success'}
+            icon={isOutOfStock ? 'alert-circle-outline' : 'cube-outline'}
+            label={isOutOfStock ? 'Stok yok' : isLowStock ? `${product.stock} adet kritik` : `${product.stock} adet`}
+          />
         </View>
 
         {/* Seçim göstergesi */}
         {isSelected && (
           <View style={styles.checkWrap}>
-            <Ionicons name="checkmark-circle" size={22} color="#c9a961" />
+            <Ionicons name="checkmark-circle" size={22} color={colors.gold} />
           </View>
         )}
       </TouchableOpacity>
@@ -87,26 +91,21 @@ export default function ProductCard({ product, onPress, isSelected }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   card: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 14,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     marginBottom: 10,
     marginHorizontal: 16,
-    padding: 12,
+    padding: spacing.md,
     borderWidth: 1.5,
-    borderColor: 'transparent',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.07,
-    shadowRadius: 4,
+    borderColor: colors.borderSoft,
+    ...shadow.card,
   },
   cardSelected: {
-    borderColor: '#c9a961',
-    elevation: 5,
-    shadowOpacity: 0.15,
+    borderColor: colors.gold,
+    ...shadow.lifted,
   },
   cardDim: {
     opacity: 0.65,
@@ -114,7 +113,7 @@ const styles = StyleSheet.create({
   imageWrap: {
     width: 80,
     height: 80,
-    borderRadius: 10,
+    borderRadius: radius.md,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -125,26 +124,12 @@ const styles = StyleSheet.create({
   imagePlaceholder: {
     width: 80,
     height: 80,
-    backgroundColor: '#fdf6e3',
+    backgroundColor: colors.surfaceWarm,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 10,
+    borderRadius: radius.md,
   },
-  stockBadge: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    backgroundColor: '#d32f2f',
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    borderBottomLeftRadius: 6,
-  },
-  stockBadgeText: {
-    color: '#fff',
-    fontSize: 7,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-  },
+  imageVeil: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.18)' },
   info: {
     flex: 1,
     paddingLeft: 12,
@@ -153,27 +138,21 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: colors.ink,
     marginBottom: 2,
   },
-  nameDim: { color: '#999' },
+  nameDim: { color: colors.muted },
   category: {
     fontSize: 11,
-    color: '#aaa',
+    color: colors.muted,
     marginBottom: 4,
   },
   price: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#c9a961',
+    color: colors.gold,
     marginBottom: 2,
   },
-  stock: {
-    fontSize: 12,
-    color: '#2e7d32',
-    fontWeight: '600',
-  },
-  stockZero: { color: '#d32f2f' },
   checkWrap: {
     alignSelf: 'center',
     marginLeft: 8,

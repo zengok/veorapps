@@ -4,6 +4,7 @@ import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { startOfDay, startOfWeek, startOfMonth } from 'date-fns';
 import { prisma } from '../utils/prisma';
 import { asyncHandler } from '../utils/asyncHandler';
+import { writeAuditLog } from '../utils/auditLog';
 
 const TZ = 'Europe/Istanbul';
 
@@ -133,6 +134,17 @@ export const resetSalesData = asyncHandler(async (req: Request, res: Response) =
   // İlgili dönemdeki satışları sil (stok ve siparişe dokunma)
   const deleted = await prisma.sale.deleteMany({
     where: { createdAt: { gte: startDateMap[period] } },
+  });
+
+  await writeAuditLog({
+    req,
+    action: 'SALES_RESET',
+    entityType: 'Sale',
+    metadata: {
+      period,
+      deletedSalesCount: deleted.count,
+      startDate: startDateMap[period].toISOString(),
+    },
   });
 
   const label = PERIOD_LABELS[period];

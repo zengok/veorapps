@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import { notificationsApi, pushTokenApi } from '../services/api';
 import { useAuth } from './AuthContext';
 import type { AppNotification } from '../types';
@@ -47,8 +48,18 @@ async function registerForPushNotifications(): Promise<string | null> {
       return null;
     }
 
+    const projectId =
+      process.env.EXPO_PUBLIC_PROJECT_ID ??
+      Constants.expoConfig?.extra?.eas?.projectId ??
+      Constants.easConfig?.projectId;
+
+    if (!projectId) {
+      console.warn('[Push] EAS projectId bulunamadı');
+      return null;
+    }
+
     const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId: process.env.EXPO_PUBLIC_PROJECT_ID,
+      projectId,
     });
     return tokenData.data;
   } catch (err) {
@@ -63,6 +74,7 @@ interface NotificationContextValue {
   fetchNotifications: () => Promise<void>;
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
+  deleteNotification: (id: string) => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextValue | null>(null);
@@ -168,9 +180,15 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
   };
 
+  const deleteNotification = async (id: string) => {
+    await notificationsApi.delete(id);
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    seenIdsRef.current.delete(id);
+  };
+
   return (
     <NotificationContext.Provider
-      value={{ notifications, unreadCount, fetchNotifications, markAsRead, markAllAsRead }}
+      value={{ notifications, unreadCount, fetchNotifications, markAsRead, markAllAsRead, deleteNotification }}
     >
       {children}
     </NotificationContext.Provider>

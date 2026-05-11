@@ -29,13 +29,13 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error('JWT_SECRET tanımlı değil');
 
-  const token = jwt.sign({ userId: user.id, email: user.email }, secret, { expiresIn: '7d' });
+  const token = jwt.sign({ userId: user.id, email: user.email, role: user.role }, secret, { expiresIn: '7d' });
 
   res.json({
     success: true,
     data: {
       token,
-      user: { id: user.id, email: user.email, name: user.name },
+      user: { id: user.id, email: user.email, name: user.name, role: user.role },
     },
   });
 });
@@ -43,7 +43,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 export const me = asyncHandler(async (req: Request, res: Response) => {
   const user = await prisma.user.findUnique({
     where: { id: req.userId },
-    select: { id: true, email: true, name: true, createdAt: true },
+    select: { id: true, email: true, name: true, role: true, createdAt: true },
   });
 
   if (!user) {

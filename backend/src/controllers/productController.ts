@@ -3,6 +3,7 @@ import { Category } from '@prisma/client';
 import { prisma } from '../utils/prisma';
 import { asyncHandler } from '../utils/asyncHandler';
 import { uploadImage, deleteImage } from '../utils/cloudinary';
+import { writeAuditLog } from '../utils/auditLog';
 
 function parseProductName(value: unknown, required: boolean): string | undefined {
   if (value === undefined && !required) return undefined;
@@ -99,6 +100,19 @@ export const createProduct = asyncHandler(async (req: Request, res: Response) =>
     },
   });
 
+  await writeAuditLog({
+    req,
+    action: 'PRODUCT_CREATE',
+    entityType: 'Product',
+    entityId: product.id,
+    metadata: {
+      name: product.name,
+      category: product.category,
+      price: Number(product.price),
+      stock: product.stock,
+    },
+  });
+
   res.status(201).json({ success: true, data: product });
 });
 
@@ -148,6 +162,29 @@ export const updateProduct = asyncHandler(async (req: Request, res: Response) =>
     },
   });
 
+  await writeAuditLog({
+    req,
+    action: 'PRODUCT_UPDATE',
+    entityType: 'Product',
+    entityId: product.id,
+    metadata: {
+      before: {
+        name: existing.name,
+        category: existing.category,
+        price: Number(existing.price),
+        stock: existing.stock,
+        imageUrl: existing.imageUrl,
+      },
+      after: {
+        name: product.name,
+        category: product.category,
+        price: Number(product.price),
+        stock: product.stock,
+        imageUrl: product.imageUrl,
+      },
+    },
+  });
+
   res.json({ success: true, data: product });
 });
 
@@ -162,6 +199,19 @@ export const deleteProduct = asyncHandler(async (req: Request, res: Response) =>
   await prisma.product.update({
     where: { id: req.params.id },
     data: { isActive: false },
+  });
+
+  await writeAuditLog({
+    req,
+    action: 'PRODUCT_DELETE',
+    entityType: 'Product',
+    entityId: existing.id,
+    metadata: {
+      name: existing.name,
+      category: existing.category,
+      price: Number(existing.price),
+      stock: existing.stock,
+    },
   });
 
   res.json({ success: true, message: 'Ürün pasife alındı' });

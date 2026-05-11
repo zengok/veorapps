@@ -10,6 +10,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import type { Order } from '../types';
 import { formatCurrency } from '../utils/formatters';
+import StatusBadge from './StatusBadge';
+import { radius, shadow, spacing, touch, type ThemeColors } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
+import AppIcon from './AppIcon';
 
 interface Props {
   order: Order;
@@ -29,6 +33,8 @@ function formatDate(dateStr: string): string {
 }
 
 export default function OrderItem({ order, onComplete, onCancel }: Props) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const productName = order.product?.name ?? 'Bilinmeyen Ürün';
   const productPrice = order.product?.price;
 
@@ -66,16 +72,18 @@ export default function OrderItem({ order, onComplete, onCancel }: Props) {
       {/* Sol: görsel */}
       <View style={styles.imageWrap}>
         <View style={styles.imagePlaceholder}>
-          <Ionicons name="flower-outline" size={28} color="#c9a961" />
+          <AppIcon name="orders" size={38} />
         </View>
       </View>
 
       {/* Orta: bilgi */}
       <View style={styles.info}>
         <Text style={styles.name} numberOfLines={2}>{productName}</Text>
-        <Text style={styles.category}>
-          {order.product?.category === 'WOMEN' ? 'Kadın' : 'Erkek'} • {order.quantity} adet
-        </Text>
+        <View style={styles.badgeRow}>
+          <StatusBadge tone="info" icon="bag-handle-outline" label="Bekliyor" />
+          <StatusBadge tone="neutral" label={`${order.quantity} adet`} />
+        </View>
+        <Text style={styles.category}>{order.product?.category === 'WOMEN' ? 'Kadın' : 'Erkek'} parfüm</Text>
         {productPrice != null && (
           <Text style={styles.price}>
             {formatCurrency(Number(productPrice) * order.quantity)}
@@ -83,7 +91,7 @@ export default function OrderItem({ order, onComplete, onCancel }: Props) {
         )}
         {order.customerNote ? (
           <View style={styles.noteRow}>
-            <Ionicons name="chatbubble-outline" size={11} color="#aaa" />
+            <Ionicons name="chatbubble-outline" size={11} color={colors.muted} />
             <Text style={styles.note} numberOfLines={1}>{order.customerNote}</Text>
           </View>
         ) : null}
@@ -92,12 +100,12 @@ export default function OrderItem({ order, onComplete, onCancel }: Props) {
 
       {/* Sağ: aksiyonlar */}
       <View style={styles.actions}>
-        <TouchableOpacity style={styles.completeBtn} onPress={handleComplete} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.completeBtn} onPress={handleComplete} activeOpacity={0.8} hitSlop={touch.hitSlop}>
           <Ionicons name="checkmark" size={16} color="#fff" />
           <Text style={styles.completeBtnText}>Hazır</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel} activeOpacity={0.8}>
-          <Ionicons name="close" size={14} color="#d32f2f" />
+        <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel} activeOpacity={0.8} hitSlop={touch.hitSlop}>
+          <Ionicons name="close" size={14} color={colors.red} />
           <Text style={styles.cancelBtnText}>İptal</Text>
         </TouchableOpacity>
       </View>
@@ -105,36 +113,32 @@ export default function OrderItem({ order, onComplete, onCancel }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   card: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 14,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     marginBottom: 10,
     marginHorizontal: 16,
-    padding: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.07,
-    shadowRadius: 4,
+    padding: spacing.md,
+    ...shadow.card,
     borderLeftWidth: 4,
-    borderLeftColor: '#c9a961',
+    borderLeftColor: colors.gold,
   },
   imageWrap: {
     width: 56,
     height: 56,
-    borderRadius: 10,
+    borderRadius: radius.md,
     overflow: 'hidden',
     marginRight: 12,
   },
   imagePlaceholder: {
     width: 56,
     height: 56,
-    backgroundColor: '#fdf6e3',
+    backgroundColor: colors.surfaceWarm,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 10,
+    borderRadius: radius.md,
   },
   info: {
     flex: 1,
@@ -143,18 +147,18 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: colors.ink,
     marginBottom: 2,
   },
   category: {
     fontSize: 11,
-    color: '#888',
+    color: colors.inkMuted,
     marginBottom: 2,
   },
   price: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#c9a961',
+    color: colors.gold,
     marginBottom: 2,
   },
   noteRow: {
@@ -165,13 +169,13 @@ const styles = StyleSheet.create({
   },
   note: {
     fontSize: 11,
-    color: '#aaa',
+    color: colors.muted,
     fontStyle: 'italic',
     flex: 1,
   },
   date: {
     fontSize: 10,
-    color: '#ccc',
+    color: colors.faint,
     marginTop: 2,
   },
   actions: {
@@ -183,8 +187,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: '#2e7d32',
-    borderRadius: 8,
+    backgroundColor: colors.green,
+    borderRadius: radius.sm,
     paddingHorizontal: 8,
     paddingVertical: 6,
   },
@@ -197,16 +201,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: '#fff0f0',
-    borderRadius: 8,
+    backgroundColor: colors.redBg,
+    borderRadius: radius.sm,
     paddingHorizontal: 8,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: '#ffd0d0',
+    borderColor: colors.red,
   },
   cancelBtnText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#d32f2f',
+    color: colors.red,
   },
+  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' },
 });

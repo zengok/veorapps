@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { radius, shadow, spacing, type ThemeColors } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface Props {
   title: string;
@@ -12,6 +14,8 @@ interface Props {
 }
 
 export default function DashboardCard({ title, value, subtitle, icon, color, compact }: Props) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   return (
     <View style={[styles.card, compact && styles.cardCompact]}>
       <View style={[styles.iconWrap, { backgroundColor: color + '18' }]}>
@@ -32,18 +36,16 @@ export default function DashboardCard({ title, value, subtitle, icon, color, com
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   card: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 14,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.md,
     marginHorizontal: 4,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    ...shadow.card,
   },
   cardCompact: {
     padding: 10,
@@ -51,7 +53,7 @@ const styles = StyleSheet.create({
   iconWrap: {
     width: 36,
     height: 36,
-    borderRadius: 10,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
@@ -59,7 +61,7 @@ const styles = StyleSheet.create({
   value: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#1a1a1a',
+    color: colors.ink,
     marginBottom: 2,
   },
   valueCompact: {
@@ -68,7 +70,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 11,
-    color: '#888',
+    color: colors.inkMuted,
     fontWeight: '600',
   },
   titleCompact: {
@@ -76,7 +78,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 10,
-    color: '#bbb',
+    color: colors.muted,
     marginTop: 2,
   },
 });

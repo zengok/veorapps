@@ -9,23 +9,16 @@ import {
   Platform,
   ActivityIndicator,
   ScrollView,
+  Image,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-
-const C = {
-  black: '#1a1a1a',
-  darkCard: '#242424',
-  gold: '#c9a961',
-  goldDim: '#a88940',
-  white: '#ffffff',
-  gray: '#888888',
-  inputBg: '#2c2c2c',
-  border: '#3a3a3a',
-  error: '#e05555',
-};
+import { radius, shadow, spacing, type ThemeColors } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function LoginScreen() {
   const { login } = useAuth();
+  const { colors } = useTheme();
+  const styles = React.useMemo(() => createStyles(colors), [colors]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -63,11 +56,8 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Logo / Marka */}
         <View style={styles.brand}>
-          <View style={styles.logoCircle}>
-            <Text style={styles.logoLetter}>V</Text>
-          </View>
+          <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
           <Text style={styles.brandName}>VEOR COLLECTION</Text>
           <Text style={styles.brandSub}>Stok & Satış Yönetimi</Text>
         </View>
@@ -84,7 +74,7 @@ export default function LoginScreen() {
           <TextInput
             style={styles.input}
             placeholder="ortak@veor.com"
-            placeholderTextColor={C.gray}
+            placeholderTextColor={colors.muted}
             value={email}
             onChangeText={(t) => { setEmail(t); setError(''); }}
             keyboardType="email-address"
@@ -97,7 +87,7 @@ export default function LoginScreen() {
           <TextInput
             style={styles.input}
             placeholder="••••••••"
-            placeholderTextColor={C.gray}
+            placeholderTextColor={colors.muted}
             value={password}
             onChangeText={(t) => { setPassword(t); setError(''); }}
             secureTextEntry
@@ -112,7 +102,7 @@ export default function LoginScreen() {
             activeOpacity={0.82}
           >
             {loading ? (
-              <ActivityIndicator color={C.black} size="small" />
+              <ActivityIndicator color={colors.black} size="small" />
             ) : (
               <Text style={styles.buttonText}>GİRİŞ YAP</Text>
             )}
@@ -125,88 +115,83 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: 'rgba(26,26,26,0.85)' },
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.mode === 'dark' ? colors.appBg : 'rgba(26,26,26,0.88)' },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 28 },
 
   brand: { alignItems: 'center', marginBottom: 40 },
-  logoCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 2,
-    borderColor: C.gold,
-    alignItems: 'center',
-    justifyContent: 'center',
+  logo: {
+    width: 104,
+    height: 104,
     marginBottom: 16,
   },
-  logoLetter: { fontSize: 36, fontWeight: '700', color: C.gold },
   brandName: {
     fontSize: 20,
     fontWeight: '700',
     letterSpacing: 5,
-    color: C.gold,
+    color: colors.gold,
   },
   brandSub: {
     fontSize: 11,
-    color: C.gray,
+    color: colors.muted,
     letterSpacing: 2,
     marginTop: 6,
   },
 
   card: {
-    backgroundColor: C.darkCard,
-    borderRadius: 16,
+    backgroundColor: colors.mode === 'dark' ? colors.surface : '#242424',
+    borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: '#333',
-    padding: 24,
+    borderColor: colors.mode === 'dark' ? colors.border : '#333',
+    padding: spacing.xxl,
+    ...shadow.lifted,
   },
 
   errorBox: {
-    backgroundColor: '#3a1a1a',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
+    backgroundColor: colors.redBg,
+    borderRadius: radius.sm,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
     borderLeftWidth: 3,
-    borderLeftColor: C.error,
+    borderLeftColor: colors.red,
   },
-  errorText: { color: C.error, fontSize: 13 },
+  errorText: { color: colors.red, fontSize: 13 },
 
   label: {
-    color: C.gray,
+    color: colors.muted,
     fontSize: 10,
     letterSpacing: 2,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   input: {
-    backgroundColor: C.inputBg,
+    backgroundColor: colors.mode === 'dark' ? colors.surfaceSoft : '#2c2c2c',
     borderWidth: 1,
-    borderColor: C.border,
-    borderRadius: 10,
-    paddingHorizontal: 16,
+    borderColor: colors.mode === 'dark' ? colors.borderSoft : '#3a3a3a',
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.lg,
     paddingVertical: 14,
-    color: C.white,
+    color: colors.white,
     fontSize: 15,
   },
 
   button: {
-    backgroundColor: C.gold,
-    borderRadius: 10,
+    backgroundColor: colors.gold,
+    borderRadius: radius.md,
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: 24,
   },
   buttonDisabled: { opacity: 0.55 },
   buttonText: {
-    color: C.black,
+    color: colors.black,
     fontWeight: '800',
     fontSize: 14,
     letterSpacing: 2,
   },
 
   footer: {
-    color: '#444',
+    color: colors.mode === 'dark' ? colors.faint : '#444',
     fontSize: 11,
     textAlign: 'center',
     marginTop: 32,

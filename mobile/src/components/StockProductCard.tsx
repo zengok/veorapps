@@ -9,6 +9,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import type { Product } from '../types';
 import { formatCurrency } from '../utils/formatters';
+import StatusBadge from './StatusBadge';
+import { radius, shadow, spacing, touch, type ThemeColors } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
+import AppIcon from './AppIcon';
 
 interface Props {
   product: Product;
@@ -17,6 +21,8 @@ interface Props {
 }
 
 export default function StockProductCard({ product, onEdit, onDelete }: Props) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const isOutOfStock = product.stock === 0;
   const isLowStock = product.stock > 0 && product.stock <= 5;
 
@@ -38,14 +44,10 @@ export default function StockProductCard({ product, onEdit, onDelete }: Props) {
           />
         ) : (
           <View style={styles.imagePlaceholder}>
-            <Ionicons name="flower-outline" size={26} color="#c9a961" />
+            <Ionicons name="flower-outline" size={26} color={colors.gold} />
           </View>
         )}
-        {isOutOfStock && (
-          <View style={styles.stockBadge}>
-            <Text style={styles.stockBadgeText}>STOK YOK</Text>
-          </View>
-        )}
+        {isOutOfStock ? <View style={styles.imageVeil} /> : null}
       </View>
 
       {/* Bilgi */}
@@ -55,23 +57,11 @@ export default function StockProductCard({ product, onEdit, onDelete }: Props) {
           {product.category === 'WOMEN' ? 'Kadın' : 'Erkek'}
         </Text>
         <Text style={styles.price}>{formatCurrency(Number(product.price))}</Text>
-        <View style={styles.stockRow}>
-          <Ionicons
-            name="cube-outline"
-            size={12}
-            color={isOutOfStock ? '#d32f2f' : isLowStock ? '#f57c00' : '#2e7d32'}
-          />
-          <Text
-            style={[
-              styles.stock,
-              isOutOfStock && styles.stockZero,
-              isLowStock && styles.stockLow,
-            ]}
-          >
-            {isOutOfStock ? 'Stok yok' : `${product.stock} adet`}
-            {isLowStock ? ' (Kritik!)' : ''}
-          </Text>
-        </View>
+        <StatusBadge
+          tone={isOutOfStock ? 'danger' : isLowStock ? 'warning' : 'success'}
+          icon={isOutOfStock ? 'alert-circle-outline' : 'cube-outline'}
+          label={isOutOfStock ? 'Stok yok' : isLowStock ? `${product.stock} adet kritik` : `${product.stock} adet`}
+        />
       </View>
 
       {/* Aksiyonlar */}
@@ -80,50 +70,52 @@ export default function StockProductCard({ product, onEdit, onDelete }: Props) {
           style={styles.editBtn}
           onPress={() => onEdit(product)}
           activeOpacity={0.75}
+          hitSlop={touch.hitSlop}
+          accessibilityRole="button"
+          accessibilityLabel={`${product.name} ürününü düzenle`}
         >
-          <Ionicons name="create-outline" size={18} color="#5c6bc0" />
+          <AppIcon name="edit" size={22} />
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.deleteBtn}
           onPress={() => onDelete(product)}
           activeOpacity={0.75}
+          hitSlop={touch.hitSlop}
+          accessibilityRole="button"
+          accessibilityLabel={`${product.name} ürününü sil`}
         >
-          <Ionicons name="trash-outline" size={18} color="#d32f2f" />
+          <AppIcon name="delete" size={22} />
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   card: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 14,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     marginBottom: 10,
     marginHorizontal: 16,
-    padding: 12,
+    padding: spacing.md,
     borderWidth: 1.5,
-    borderColor: 'transparent',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.07,
-    shadowRadius: 4,
+    borderColor: colors.borderSoft,
+    ...shadow.card,
     alignItems: 'center',
   },
   cardOutOfStock: {
-    borderColor: '#d32f2f',
-    backgroundColor: '#fff8f8',
+    borderColor: colors.red,
+    backgroundColor: colors.redBg,
   },
   cardLowStock: {
-    borderColor: '#f57c00',
-    backgroundColor: '#fffbf5',
+    borderColor: colors.orange,
+    backgroundColor: colors.orangeBg,
   },
   imageWrap: {
     width: 72,
     height: 72,
-    borderRadius: 10,
+    borderRadius: radius.md,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -131,25 +123,11 @@ const styles = StyleSheet.create({
   imagePlaceholder: {
     width: 72,
     height: 72,
-    backgroundColor: '#fdf6e3',
+    backgroundColor: colors.surfaceWarm,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stockBadge: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    backgroundColor: '#d32f2f',
-    paddingHorizontal: 3,
-    paddingVertical: 2,
-    borderBottomLeftRadius: 6,
-  },
-  stockBadgeText: {
-    color: '#fff',
-    fontSize: 6,
-    fontWeight: '800',
-    letterSpacing: 0.2,
-  },
+  imageVeil: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.18)' },
   info: {
     flex: 1,
     paddingLeft: 12,
@@ -158,24 +136,16 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: colors.ink,
     marginBottom: 2,
   },
-  category: { fontSize: 11, color: '#aaa', marginBottom: 4 },
+  category: { fontSize: 11, color: colors.muted, marginBottom: 4 },
   price: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#c9a961',
+    color: colors.gold,
     marginBottom: 4,
   },
-  stockRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  stock: { fontSize: 12, color: '#2e7d32', fontWeight: '600' },
-  stockZero: { color: '#d32f2f' },
-  stockLow: { color: '#f57c00' },
   actions: {
     flexDirection: 'column',
     gap: 8,
@@ -184,16 +154,16 @@ const styles = StyleSheet.create({
   editBtn: {
     width: 36,
     height: 36,
-    borderRadius: 10,
-    backgroundColor: '#eef0fb',
+    borderRadius: radius.md,
+    backgroundColor: colors.blueBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   deleteBtn: {
     width: 36,
     height: 36,
-    borderRadius: 10,
-    backgroundColor: '#fdeaea',
+    borderRadius: radius.md,
+    backgroundColor: colors.redBg,
     alignItems: 'center',
     justifyContent: 'center',
   },

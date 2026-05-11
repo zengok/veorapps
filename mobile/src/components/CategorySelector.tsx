@@ -1,19 +1,23 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import type { Category } from '../types';
+import { radius, shadow, spacing, touch, type ThemeColors } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
+import AppIcon, { type AppIconName } from './AppIcon';
 
 interface Props {
   selected: Category | null;
   onChange: (cat: Category) => void;
 }
 
-const CATEGORIES: { value: Category; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { value: 'WOMEN', label: 'Kadın Parfümü', icon: 'rose-outline' },
-  { value: 'MEN', label: 'Erkek Parfümü', icon: 'water-outline' },
+const CATEGORIES: { value: Category; label: string; icon: AppIconName }[] = [
+  { value: 'WOMEN', label: 'Kadın Parfümü', icon: 'flower' },
+  { value: 'MEN', label: 'Erkek Parfümü', icon: 'drop' },
 ];
 
 export default function CategorySelector({ selected, onChange }: Props) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   return (
     <View style={styles.container}>
       <Text style={styles.heading}>Kategori Seçin</Text>
@@ -26,13 +30,12 @@ export default function CategorySelector({ selected, onChange }: Props) {
               style={[styles.btn, isActive && styles.btnActive]}
               onPress={() => onChange(cat.value)}
               activeOpacity={0.8}
+              hitSlop={touch.hitSlop}
+              accessibilityRole="button"
+              accessibilityLabel={`${cat.label} seç`}
             >
-              <Ionicons
-                name={cat.icon}
-                size={34}
-                color={isActive ? '#c9a961' : '#999'}
-              />
-              <Text style={[styles.label, isActive && styles.labelActive]}>
+              <AppIcon name={cat.icon} size={42} opacity={isActive ? 1 : 0.62} />
+              <Text style={[styles.label, isActive && styles.labelActive]} numberOfLines={2}>
                 {cat.label}
               </Text>
               {isActive && (
@@ -46,58 +49,55 @@ export default function CategorySelector({ selected, onChange }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
   },
   heading: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#888',
+    color: colors.inkMuted,
     letterSpacing: 1,
     textTransform: 'uppercase',
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   row: {
     flexDirection: 'row',
-    gap: 10,
+    gap: spacing.md,
   },
   btn: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 24,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#e0e0e0',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
+    minHeight: 108,
+    paddingVertical: spacing.xl,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: colors.borderSoft,
+    ...shadow.card,
   },
   btnActive: {
-    borderColor: '#c9a961',
-    backgroundColor: '#fffbf0',
-    elevation: 4,
+    borderColor: colors.gold,
+    backgroundColor: colors.surfaceWarm,
+    ...shadow.lifted,
   },
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#999',
-    marginTop: 10,
+    color: colors.muted,
+    marginTop: spacing.sm,
     textAlign: 'center',
   },
   labelActive: {
-    color: '#c9a961',
+    color: colors.gold,
   },
   activeDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#c9a961',
-    marginTop: 8,
+    backgroundColor: colors.gold,
+    marginTop: spacing.sm,
   },
 });
