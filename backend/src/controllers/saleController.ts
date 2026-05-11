@@ -1,13 +1,20 @@
 import { Request, Response } from 'express';
-import { NotificationType } from '@prisma/client';
+import { NotificationType, OrderStatus } from '@prisma/client';
 import { prisma } from '../utils/prisma';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendPushToAll } from '../utils/pushNotification';
 
+function parsePositiveQuantity(quantity: unknown): number {
+  const qty = Number(quantity);
+  if (!Number.isInteger(qty) || qty < 1) {
+    throw Object.assign(new Error('Adet pozitif bir tam sayı olmalı'), { status: 400 });
+  }
+  return qty;
+}
 
 export const createSale = asyncHandler(async (req: Request, res: Response) => {
   const { productId, quantity } = req.body as { productId: string; quantity: number };
-  const qty = parseInt(String(quantity), 10);
+  const qty = parsePositiveQuantity(quantity);
 
   const saleId = await prisma.$transaction(async (tx) => {
     const product = await tx.product.findUnique({ where: { id: productId } });
@@ -15,27 +22,52 @@ export const createSale = asyncHandler(async (req: Request, res: Response) => {
     if (!product || !product.isActive) {
       throw Object.assign(new Error('Ürün bulunamadı'), { status: 404 });
     }
-    if (product.stock < qty) {
+
+    const pendingOrders = await tx.order.aggregate({
+      _sum: { quantity: true },
+      where: { productId, status: OrderStatus.PENDING },
+    });
+    const reservedStock = pendingOrders._sum.quantity ?? 0;
+    const availableStock = product.stock - reservedStock;
+
+    if (availableStock < qty) {
       throw Object.assign(
-        new Error(`Yetersiz stok. Mevcut: ${product.stock} adet`),
+        new Error(`Yetersiz kullanılabilir stok. Kullanılabilir: ${Math.max(availableStock, 0)} adet`),
         { status: 400 }
       );
     }
 
-    const newStock = product.stock - qty;
+    const stockUpdate = await tx.product.updateMany({
+      where: { id: productId, isActive: true, stock: { gte: qty } },
+      data: { stock: { decrement: qty } },
+    });
 
-    const [, sale] = await Promise.all([
-      tx.product.update({ where: { id: productId }, data: { stock: newStock } }),
-      tx.sale.create({
-        data: {
-          productId,
-          userId: req.userId,
-          quantity: qty,
-          unitPrice: product.price,
-          totalPrice: Number(product.price) * qty,
-        },
-      }),
-    ]);
+    if (stockUpdate.count === 0) {
+      const latest = await tx.product.findUnique({
+        where: { id: productId },
+        select: { stock: true },
+      });
+      throw Object.assign(
+        new Error(`Yetersiz stok. Mevcut: ${latest?.stock ?? product.stock} adet`),
+        { status: 400 }
+      );
+    }
+
+    const updatedProduct = await tx.product.findUnique({
+      where: { id: productId },
+      select: { stock: true },
+    });
+    const newStock = updatedProduct?.stock ?? product.stock - qty;
+
+    const sale = await tx.sale.create({
+      data: {
+        productId,
+        userId: req.userId,
+        quantity: qty,
+        unitPrice: product.price,
+        totalPrice: Number(product.price) * qty,
+      },
+    });
 
     if (newStock === 0) {
       await tx.notification.create({

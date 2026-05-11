@@ -90,22 +90,27 @@ export const importFromExcel = asyncHandler(async (req: Request, res: Response) 
 
   let created = 0;
   let updated = 0;
+  let skipped = 0;
   const errors: string[] = [];
 
   for (const rawRow of rows) {
     try {
       const row = normalizeRow(rawRow);
       const name = extractName(row);
-      if (!name || name.trim() === '') continue;
+      if (!name || name.trim() === '') {
+        skipped++;
+        continue;
+      }
 
       const price = extractPrice(row);
       const stock = extractStock(row);
       const category = extractCategory(row, sheetCategory);
 
-      // Aynı isimde aktif ürün var mı?
+      // Aynı isim ve kategoride aktif ürün var mı?
       const existing = await prisma.product.findFirst({
         where: {
           name: { equals: name.trim(), mode: 'insensitive' },
+          category,
           isActive: true,
         },
       });
@@ -142,8 +147,9 @@ export const importFromExcel = asyncHandler(async (req: Request, res: Response) 
       created,
       updated,
       total: created + updated,
+      skipped,
       errors: errors.length > 0 ? errors.slice(0, 5) : undefined,
     },
-    message: `${created} yeni ürün oluşturuldu, ${updated} ürün güncellendi.`,
+    message: `${created} yeni ürün oluşturuldu, ${updated} ürün güncellendi, ${skipped} satır atlandı.`,
   });
 });

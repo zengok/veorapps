@@ -4,26 +4,51 @@ import { prisma } from '../utils/prisma';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendPushToAll } from '../utils/pushNotification';
 
+function parsePositiveQuantity(quantity: unknown): number {
+  const qty = Number(quantity);
+  if (!Number.isInteger(qty) || qty < 1) {
+    throw Object.assign(new Error('Adet pozitif bir tam sayı olmalı'), { status: 400 });
+  }
+  return qty;
+}
+
 export const createOrder = asyncHandler(async (req: Request, res: Response) => {
   const { productId, quantity, customerNote } = req.body as {
     productId: string;
     quantity: number;
     customerNote?: string;
   };
-  const qty = parseInt(String(quantity), 10);
+  const qty = parsePositiveQuantity(quantity);
 
-  const product = await prisma.product.findUnique({ where: { id: productId } });
-  if (!product || !product.isActive) {
-    res.status(404).json({ success: false, error: 'Ürün bulunamadı' });
-    return;
-  }
+  const { order, product } = await prisma.$transaction(async (tx) => {
+    const product = await tx.product.findUnique({ where: { id: productId } });
+    if (!product || !product.isActive) {
+      throw Object.assign(new Error('Ürün bulunamadı'), { status: 404 });
+    }
 
-  const order = await prisma.order.create({
-    data: { productId, userId: req.userId, quantity: qty, customerNote, status: OrderStatus.PENDING },
-    include: {
-      product: { select: { id: true, name: true, category: true, price: true } },
-      user: { select: { id: true, name: true } },
-    },
+    const pendingOrders = await tx.order.aggregate({
+      _sum: { quantity: true },
+      where: { productId, status: OrderStatus.PENDING },
+    });
+    const reservedStock = pendingOrders._sum.quantity ?? 0;
+    const availableStock = product.stock - reservedStock;
+
+    if (availableStock < qty) {
+      throw Object.assign(
+        new Error(`Yetersiz kullanılabilir stok. Kullanılabilir: ${Math.max(availableStock, 0)} adet`),
+        { status: 400 }
+      );
+    }
+
+    const order = await tx.order.create({
+      data: { productId, userId: req.userId, quantity: qty, customerNote, status: OrderStatus.PENDING },
+      include: {
+        product: { select: { id: true, name: true, category: true, price: true } },
+        user: { select: { id: true, name: true } },
+      },
+    });
+
+    return { order, product };
   });
 
   if (product.stock <= 1) {
@@ -74,50 +99,68 @@ export const getOrders = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const completeOrder = asyncHandler(async (req: Request, res: Response) => {
-  const order = await prisma.order.findUnique({ where: { id: req.params.id } });
-
-  if (!order) {
-    res.status(404).json({ success: false, error: 'Sipariş bulunamadı' });
-    return;
-  }
-  if (order.status !== OrderStatus.PENDING) {
-    res.status(400).json({ success: false, error: 'Sadece bekleyen siparişler tamamlanabilir' });
-    return;
-  }
-
   const result = await prisma.$transaction(async (tx) => {
+    const order = await tx.order.findUnique({ where: { id: req.params.id } });
+
+    if (!order) {
+      throw Object.assign(new Error('Sipariş bulunamadı'), { status: 404 });
+    }
+    if (order.status !== OrderStatus.PENDING) {
+      throw Object.assign(new Error('Sadece bekleyen siparişler tamamlanabilir'), { status: 400 });
+    }
+
     const product = await tx.product.findUnique({ where: { id: order.productId } });
-    if (!product) throw Object.assign(new Error('Ürün bulunamadı'), { status: 404 });
-    if (product.stock < order.quantity) {
+    if (!product || !product.isActive) {
+      throw Object.assign(new Error('Ürün bulunamadı'), { status: 404 });
+    }
+
+    const completed = await tx.order.updateMany({
+      where: { id: order.id, status: OrderStatus.PENDING },
+      data: { status: OrderStatus.COMPLETED, completedAt: new Date() },
+    });
+    if (completed.count === 0) {
+      throw Object.assign(new Error('Sadece bekleyen siparişler tamamlanabilir'), { status: 400 });
+    }
+
+    const stockUpdate = await tx.product.updateMany({
+      where: { id: order.productId, isActive: true, stock: { gte: order.quantity } },
+      data: { stock: { decrement: order.quantity } },
+    });
+
+    if (stockUpdate.count === 0) {
+      const latest = await tx.product.findUnique({
+        where: { id: order.productId },
+        select: { stock: true },
+      });
       throw Object.assign(
-        new Error(`Yetersiz stok. Mevcut: ${product.stock} adet`),
+        new Error(`Yetersiz stok. Mevcut: ${latest?.stock ?? product.stock} adet`),
         { status: 400 }
       );
     }
 
-    const newStock = product.stock - order.quantity;
+    const updatedProduct = await tx.product.findUnique({
+      where: { id: order.productId },
+      select: { stock: true },
+    });
+    const newStock = updatedProduct?.stock ?? product.stock - order.quantity;
 
-    await tx.product.update({ where: { id: order.productId }, data: { stock: newStock } });
+    const sale = await tx.sale.create({
+      data: {
+        productId: order.productId,
+        userId: order.userId,
+        quantity: order.quantity,
+        unitPrice: product.price,
+        totalPrice: Number(product.price) * order.quantity,
+      },
+    });
 
-    const [completedOrder, sale] = await Promise.all([
-      tx.order.update({
-        where: { id: order.id },
-        data: { status: OrderStatus.COMPLETED, completedAt: new Date() },
-        include: {
-          product: { select: { id: true, name: true, category: true } },
-          user: { select: { id: true, name: true } },
-        },
-      }),
-      tx.sale.create({
-        data: {
-          productId: order.productId,
-          userId: order.userId,
-          quantity: order.quantity,
-          unitPrice: product.price,
-          totalPrice: Number(product.price) * order.quantity,
-        },
-      }),
-    ]);
+    const completedOrder = await tx.order.findUniqueOrThrow({
+      where: { id: order.id },
+      include: {
+        product: { select: { id: true, name: true, category: true } },
+        user: { select: { id: true, name: true } },
+      },
+    });
 
     if (newStock === 0) {
       await tx.notification.create({

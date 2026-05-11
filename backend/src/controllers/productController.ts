@@ -4,8 +4,46 @@ import { prisma } from '../utils/prisma';
 import { asyncHandler } from '../utils/asyncHandler';
 import { uploadImage, deleteImage } from '../utils/cloudinary';
 
+function parseProductName(value: unknown, required: boolean): string | undefined {
+  if (value === undefined && !required) return undefined;
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    throw Object.assign(new Error('Ürün adı zorunludur'), { status: 400 });
+  }
+  return value.trim();
+}
+
+function parseCategory(value: unknown, required: boolean): Category | undefined {
+  if (value === undefined && !required) return undefined;
+  if (value !== Category.WOMEN && value !== Category.MEN) {
+    throw Object.assign(new Error('Geçerli bir kategori seçiniz'), { status: 400 });
+  }
+  return value;
+}
+
+function parsePrice(value: unknown, required: boolean): number | undefined {
+  if (value === undefined && !required) return undefined;
+  const price = Number(String(value ?? '').replace(',', '.'));
+  if (!Number.isFinite(price) || price <= 0) {
+    throw Object.assign(new Error('Geçerli bir fiyat giriniz'), { status: 400 });
+  }
+  return price;
+}
+
+function parseStock(value: unknown, required: boolean): number | undefined {
+  if (value === undefined && !required) return undefined;
+  const stock = Number(value);
+  if (!Number.isInteger(stock) || stock < 0) {
+    throw Object.assign(new Error('Geçerli bir stok miktarı giriniz'), { status: 400 });
+  }
+  return stock;
+}
+
 export const getProducts = asyncHandler(async (req: Request, res: Response) => {
   const { category } = req.query as { category?: string };
+  if (category && category !== 'ALL' && category !== Category.WOMEN && category !== Category.MEN) {
+    res.status(400).json({ success: false, error: 'Geçerli bir kategori seçiniz' });
+    return;
+  }
 
   const products = await prisma.product.findMany({
     where: {
@@ -36,6 +74,10 @@ export const createProduct = asyncHandler(async (req: Request, res: Response) =>
     price: string;
     stock: string;
   };
+  const parsedName = parseProductName(name, true)!;
+  const parsedCategory = parseCategory(category, true)!;
+  const parsedPrice = parsePrice(price, true)!;
+  const parsedStock = parseStock(stock, true)!;
 
   let imageUrl: string | undefined;
   let cloudinaryPublicId: string | undefined;
@@ -48,10 +90,10 @@ export const createProduct = asyncHandler(async (req: Request, res: Response) =>
 
   const product = await prisma.product.create({
     data: {
-      name,
-      category,
-      price: parseFloat(price),
-      stock: parseInt(stock, 10),
+      name: parsedName,
+      category: parsedCategory,
+      price: parsedPrice,
+      stock: parsedStock,
       imageUrl,
       cloudinaryPublicId,
     },
@@ -68,12 +110,17 @@ export const updateProduct = asyncHandler(async (req: Request, res: Response) =>
     return;
   }
 
-  const { name, category, price, stock } = req.body as {
+  const { name, category, price, stock, removeImage } = req.body as {
     name?: string;
     category?: Category;
     price?: string;
     stock?: string;
+    removeImage?: string;
   };
+  const parsedName = parseProductName(name, false);
+  const parsedCategory = parseCategory(category, false);
+  const parsedPrice = parsePrice(price, false);
+  const parsedStock = parseStock(stock, false);
 
   let imageUrl: string | null = existing.imageUrl;
   let cloudinaryPublicId: string | null = existing.cloudinaryPublicId;
@@ -83,15 +130,19 @@ export const updateProduct = asyncHandler(async (req: Request, res: Response) =>
     const uploaded = await uploadImage(req.file.buffer);
     imageUrl = uploaded.url;
     cloudinaryPublicId = uploaded.publicId;
+  } else if (removeImage === 'true') {
+    if (existing.cloudinaryPublicId) await deleteImage(existing.cloudinaryPublicId);
+    imageUrl = null;
+    cloudinaryPublicId = null;
   }
 
   const product = await prisma.product.update({
     where: { id: req.params.id },
     data: {
-      ...(name !== undefined && { name }),
-      ...(category !== undefined && { category }),
-      ...(price !== undefined && { price: parseFloat(price) }),
-      ...(stock !== undefined && { stock: parseInt(stock, 10) }),
+      ...(parsedName !== undefined && { name: parsedName }),
+      ...(parsedCategory !== undefined && { category: parsedCategory }),
+      ...(parsedPrice !== undefined && { price: parsedPrice }),
+      ...(parsedStock !== undefined && { stock: parsedStock }),
       imageUrl,
       cloudinaryPublicId,
     },
