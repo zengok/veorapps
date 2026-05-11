@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { NotificationType, OrderStatus } from '@prisma/client';
+import { NotificationType } from '@prisma/client';
 import { endOfMonth, format, parse } from 'date-fns';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 import * as XLSX from 'xlsx';
@@ -7,6 +7,7 @@ import { prisma } from '../utils/prisma';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendPushToAll } from '../utils/pushNotification';
 import { writeAuditLog } from '../utils/auditLog';
+import { checkMonthlyTargetAndNotify } from '../utils/monthlyTarget';
 
 const TZ = 'Europe/Istanbul';
 
@@ -59,20 +60,6 @@ export const createSale = asyncHandler(async (req: Request, res: Response) => {
 
     if (!product || !product.isActive) {
       throw Object.assign(new Error('Ürün bulunamadı'), { status: 404 });
-    }
-
-    const pendingOrders = await tx.order.aggregate({
-      _sum: { quantity: true },
-      where: { productId, status: OrderStatus.PENDING },
-    });
-    const reservedStock = pendingOrders._sum.quantity ?? 0;
-    const availableStock = product.stock - reservedStock;
-
-    if (availableStock < qty) {
-      throw Object.assign(
-        new Error(`Yetersiz kullanılabilir stok. Kullanılabilir: ${Math.max(availableStock, 0)} adet`),
-        { status: 400 }
-      );
     }
 
     const stockUpdate = await tx.product.updateMany({
@@ -180,6 +167,8 @@ export const createSale = asyncHandler(async (req: Request, res: Response) => {
         customerNote: sale.customerNote,
       },
     });
+
+    await checkMonthlyTargetAndNotify();
   }
 
   res.status(201).json({ success: true, data: sale });

@@ -9,6 +9,7 @@ import type {
   MonthlySalesExportResponse,
   Order,
   DashboardData,
+  MonthlyTargetSetting,
   AppNotification,
   Category,
   OrderStatus,
@@ -134,7 +135,7 @@ export const ordersApi = {
     return data;
   },
   complete: async (id: string) => {
-    const { data } = await api.patch<ApiResponse<{ order: Order; sale: Sale }>>(
+    const { data } = await api.patch<ApiResponse<{ order: Order }>>(
       `/orders/${id}/complete`
     );
     return data;
@@ -153,6 +154,20 @@ export const dashboardApi = {
   },
   resetSales: async (password: string, period: 'daily' | 'weekly' | 'monthly') => {
     const { data } = await api.post<ApiResponse<{ deletedSalesCount: number, period: string }>>('/dashboard/reset-sales', { password, period });
+    return data;
+  },
+};
+
+// ── Settings ─────────────────────────────────────────────────────────────────
+export const settingsApi = {
+  getMonthlyTarget: async () => {
+    const { data } = await api.get<ApiResponse<MonthlyTargetSetting>>('/settings/monthly-target');
+    return data;
+  },
+  updateMonthlyTarget: async (targetRevenue: number) => {
+    const { data } = await api.put<ApiResponse<MonthlyTargetSetting>>('/settings/monthly-target', {
+      targetRevenue,
+    });
     return data;
   },
 };

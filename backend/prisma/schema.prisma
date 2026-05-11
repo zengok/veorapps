@@ -124,6 +124,18 @@ model Notification {
   @@map("notifications")
 }
 
+model MonthlyTargetSetting {
+  id                 String    @id @default("monthly-target")
+  targetRevenue      Decimal   @default(0) @db.Decimal(12, 2)
+  targetMonth        String
+  isMonthlyTargetHit Boolean   @default(false)
+  hitAt              DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@map("monthly_target_settings")
+}
+
 model AuditLog {
   id         String   @id @default(uuid())
   userId     String?

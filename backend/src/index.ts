@@ -12,7 +12,9 @@ import dashboardRoutes from './routes/dashboard';
 import notificationRoutes from './routes/notifications';
 import importRoutes from './routes/import';
 import auditLogRoutes from './routes/auditLogs';
+import settingsRoutes from './routes/settings';
 import { errorHandler } from './middleware/errorHandler';
+import { startMonthlyTargetResetScheduler } from './utils/monthlyTarget';
 
 dotenv.config();
 
@@ -37,6 +39,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/import', importRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Global hata yakalayıcı — en sonda olmalı
 app.use(errorHandler);
@@ -44,5 +47,7 @@ app.use(errorHandler);
 app.listen(PORT, () => {
   console.log(`✓ Veor Collection API — port ${PORT}`);
 });
+
+startMonthlyTargetResetScheduler();
 
 export default app;

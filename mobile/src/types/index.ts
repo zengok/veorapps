@@ -72,6 +72,14 @@ export interface DashboardData {
   unreadNotifications: number;
 }
 
+export interface MonthlyTargetSetting {
+  targetRevenue: number;
+  currentRevenue: number;
+  targetMonth: string;
+  isMonthlyTargetHit: boolean;
+  hitAt: string | null;
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;

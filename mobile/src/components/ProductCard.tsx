@@ -19,9 +19,10 @@ interface Props {
   product: Product;
   onPress: () => void;
   isSelected: boolean;
+  allowOutOfStockSelect?: boolean;
 }
 
-export default function ProductCard({ product, onPress, isSelected }: Props) {
+export default function ProductCard({ product, onPress, isSelected, allowOutOfStockSelect }: Props) {
   const { colors } = useTheme();
   const styles = createStyles(colors);
   const scale = useRef(new Animated.Value(1)).current;
@@ -43,7 +44,7 @@ export default function ProductCard({ product, onPress, isSelected }: Props) {
         style={[
           styles.card,
           isSelected && styles.cardSelected,
-          isOutOfStock && styles.cardDim,
+          isOutOfStock && !allowOutOfStockSelect && styles.cardDim,
         ]}
         onPress={onPress}
         activeOpacity={0.82}
@@ -61,12 +62,12 @@ export default function ProductCard({ product, onPress, isSelected }: Props) {
               <AppIcon name="perfume" size={42} />
             </View>
           )}
-          {isOutOfStock ? <View style={styles.imageVeil} /> : null}
+          {isOutOfStock && !allowOutOfStockSelect ? <View style={styles.imageVeil} /> : null}
         </View>
 
         {/* Ürün bilgisi */}
         <View style={styles.info}>
-          <Text style={[styles.name, isOutOfStock && styles.nameDim]} numberOfLines={2}>
+          <Text style={[styles.name, isOutOfStock && !allowOutOfStockSelect && styles.nameDim]} numberOfLines={2}>
             {product.name}
           </Text>
           <Text style={styles.category}>

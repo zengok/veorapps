@@ -40,12 +40,12 @@ export default function OrderItem({ order, onComplete, onCancel }: Props) {
 
   const handleComplete = () => {
     Alert.alert(
-      'Siparişi Tamamla',
-      `"${productName}" siparişini tamamlandı olarak işaretlemek istiyor musunuz?\nSatış kaydı otomatik oluşturulacak.`,
+      'Sipariş Hazır',
+      `"${productName}" siparişini hazır olarak işaretlemek istiyor musunuz?\nSipariş listeden kaldırılacak; stok ve satış etkilenmeyecek.`,
       [
         { text: 'Vazgeç', style: 'cancel' },
         {
-          text: 'Hazırlandı ✓',
+          text: 'Hazır',
           onPress: () => onComplete(order.id),
         },
       ]

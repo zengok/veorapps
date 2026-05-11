@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,12 +16,14 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { dashboardApi } from '../services/api';
+import { dashboardApi, settingsApi } from '../services/api';
 import { getApiErrorMessage } from '../utils/errors';
 import { exportMonthlySales, getMonthPeriod } from '../utils/salesExport';
+import { formatCurrency } from '../utils/formatters';
 import StatusBadge from '../components/StatusBadge';
 import AppIcon, { type AppIconName } from '../components/AppIcon';
 import { makeTypography, radius, shadow, spacing, type ThemeColors, type ThemeMode } from '../theme';
+import type { MonthlyTargetSetting } from '../types';
 
 function createStyles(colors: ThemeColors) {
   const typography = makeTypography(colors);
@@ -99,6 +101,65 @@ function createStyles(colors: ThemeColors) {
     },
     themeOptionText: { fontSize: 13, fontWeight: '800', color: colors.inkMuted },
     themeOptionTextActive: { color: colors.gold },
+    targetPanel: { padding: spacing.lg, gap: spacing.md },
+    targetHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+    targetIcon: {
+      width: 42,
+      height: 42,
+      borderRadius: radius.md,
+      backgroundColor: colors.surfaceWarm,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    targetTitle: { fontSize: 15, fontWeight: '800', color: colors.ink },
+    targetSubtitle: { fontSize: 12, color: colors.muted, marginTop: 2, lineHeight: 17 },
+    targetStats: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    targetStatBox: {
+      flex: 1,
+      backgroundColor: colors.surfaceSoft,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.borderSoft,
+      padding: spacing.md,
+    },
+    targetStatLabel: { fontSize: 11, fontWeight: '800', color: colors.muted },
+    targetStatValue: { fontSize: 14, fontWeight: '900', color: colors.ink, marginTop: 4 },
+    targetInputWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surfaceSoft,
+      borderWidth: 1.5,
+      borderColor: colors.borderSoft,
+      borderRadius: radius.lg,
+      paddingHorizontal: spacing.md,
+    },
+    targetPrefix: { fontSize: 16, fontWeight: '900', color: colors.gold, marginRight: 8 },
+    targetInput: { flex: 1, paddingVertical: 13, fontSize: 16, fontWeight: '800', color: colors.ink },
+    targetSaveBtn: {
+      minHeight: 46,
+      borderRadius: radius.lg,
+      backgroundColor: colors.gold,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+      gap: 8,
+    },
+    targetSaveBtnDisabled: { opacity: 0.55 },
+    targetSaveText: { fontSize: 14, fontWeight: '900', color: colors.black },
+    targetHitBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: colors.greenBg,
+      borderRadius: radius.md,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      alignSelf: 'flex-start',
+    },
+    targetHitText: { fontSize: 12, fontWeight: '800', color: colors.green },
     infoBox: {
       flexDirection: 'row',
       backgroundColor: colors.blueBg,
@@ -300,6 +361,134 @@ function ThemeSelector({
           </TouchableOpacity>
         );
       })}
+    </View>
+  );
+}
+
+function parseRevenueInput(value: string): number {
+  const normalized = value
+    .replace(/\s/g, '')
+    .replace(/\./g, '')
+    .replace(',', '.');
+  const amount = Number(normalized);
+  return Number.isFinite(amount) ? amount : NaN;
+}
+
+function MonthlyTargetPanel({
+  colors,
+  styles,
+}: {
+  colors: ThemeColors;
+  styles: ReturnType<typeof createStyles>;
+}) {
+  const [setting, setSetting] = useState<MonthlyTargetSetting | null>(null);
+  const [targetInput, setTargetInput] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const loadTarget = async () => {
+    setLoading(true);
+    try {
+      const res = await settingsApi.getMonthlyTarget();
+      if (res.success && res.data) {
+        setSetting(res.data);
+        setTargetInput(String(Math.round(res.data.targetRevenue)));
+      }
+    } catch (e) {
+      Alert.alert('Hata', getApiErrorMessage(e, 'Aylık hedef ciro alınamadı.'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadTarget();
+  }, []);
+
+  const handleSave = async () => {
+    const amount = parseRevenueInput(targetInput);
+    if (!Number.isFinite(amount) || amount < 0) {
+      Alert.alert('Geçersiz Değer', 'Aylık hedef ciro 0 veya daha büyük bir sayı olmalı.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await settingsApi.updateMonthlyTarget(amount);
+      if (res.success && res.data) {
+        setSetting(res.data);
+        setTargetInput(String(Math.round(res.data.targetRevenue)));
+        Alert.alert('Güncellendi', 'Aylık hedef ciro kaydedildi.');
+      } else {
+        Alert.alert('Hata', res.error ?? 'Aylık hedef ciro güncellenemedi.');
+      }
+    } catch (e) {
+      Alert.alert('Hata', getApiErrorMessage(e, 'Aylık hedef ciro güncellenemedi.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <View style={styles.targetPanel}>
+      <View style={styles.targetHeader}>
+        <View style={styles.targetIcon}>
+          <Ionicons name="flag-outline" size={22} color={colors.gold} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.targetTitle}>Aylık Hedef Ciro</Text>
+          <Text style={styles.targetSubtitle}>
+            Hedefe ilk ulaşıldığında tüm ortaklara anlık bildirim gider.
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.targetStats}>
+        <View style={styles.targetStatBox}>
+          <Text style={styles.targetStatLabel}>BU AY CİRO</Text>
+          <Text style={styles.targetStatValue}>{formatCurrency(setting?.currentRevenue ?? 0)}</Text>
+        </View>
+        <View style={styles.targetStatBox}>
+          <Text style={styles.targetStatLabel}>HEDEF</Text>
+          <Text style={styles.targetStatValue}>{formatCurrency(setting?.targetRevenue ?? 0)}</Text>
+        </View>
+      </View>
+
+      {setting?.isMonthlyTargetHit ? (
+        <View style={styles.targetHitBadge}>
+          <Ionicons name="checkmark-circle-outline" size={16} color={colors.green} />
+          <Text style={styles.targetHitText}>Bu ay hedef bildirimi gönderildi</Text>
+        </View>
+      ) : null}
+
+      <View style={styles.targetInputWrap}>
+        <Text style={styles.targetPrefix}>TL</Text>
+        <TextInput
+          style={styles.targetInput}
+          value={targetInput}
+          onChangeText={setTargetInput}
+          placeholder="30000"
+          placeholderTextColor={colors.faint}
+          keyboardType={Platform.OS === 'ios' ? 'decimal-pad' : 'numeric'}
+          editable={!loading && !saving}
+        />
+      </View>
+
+      <TouchableOpacity
+        style={[styles.targetSaveBtn, (loading || saving) && styles.targetSaveBtnDisabled]}
+        onPress={handleSave}
+        disabled={loading || saving}
+        activeOpacity={0.82}
+      >
+        {loading || saving ? (
+          <ActivityIndicator color={colors.black} size="small" />
+        ) : (
+          <>
+            <Ionicons name="save-outline" size={17} color={colors.black} />
+            <Text style={styles.targetSaveText}>Hedefi Güncelle</Text>
+          </>
+        )}
+      </TouchableOpacity>
     </View>
   );
 }
@@ -534,6 +723,15 @@ export default function SettingsScreen() {
       <View style={styles.card}>
         <ThemeSelector mode={mode} onChange={setThemeMode} colors={colors} styles={styles} />
       </View>
+
+      {user?.role === 'ADMIN' ? (
+        <>
+          <Text style={styles.sectionLabel}>HEDEF CİRO</Text>
+          <View style={styles.card}>
+            <MonthlyTargetPanel colors={colors} styles={styles} />
+          </View>
+        </>
+      ) : null}
 
       <Text style={styles.sectionLabel}>SATIŞ EXCEL ÇIKTILARI</Text>
       <View style={styles.card}>

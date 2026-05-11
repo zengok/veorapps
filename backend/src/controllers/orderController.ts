@@ -21,47 +21,18 @@ export const createOrder = asyncHandler(async (req: Request, res: Response) => {
   };
   const qty = parsePositiveQuantity(quantity);
 
-  const { order, product } = await prisma.$transaction(async (tx) => {
-    const product = await tx.product.findUnique({ where: { id: productId } });
-    if (!product || !product.isActive) {
-      throw Object.assign(new Error('Ürün bulunamadı'), { status: 404 });
-    }
-
-    const pendingOrders = await tx.order.aggregate({
-      _sum: { quantity: true },
-      where: { productId, status: OrderStatus.PENDING },
-    });
-    const reservedStock = pendingOrders._sum.quantity ?? 0;
-    const availableStock = product.stock - reservedStock;
-
-    if (availableStock < qty) {
-      throw Object.assign(
-        new Error(`Yetersiz kullanılabilir stok. Kullanılabilir: ${Math.max(availableStock, 0)} adet`),
-        { status: 400 }
-      );
-    }
-
-    const order = await tx.order.create({
-      data: { productId, userId: req.userId, quantity: qty, customerNote, status: OrderStatus.PENDING },
-      include: {
-        product: { select: { id: true, name: true, category: true, price: true } },
-        user: { select: { id: true, name: true } },
-      },
-    });
-
-    return { order, product };
-  });
-
-  if (product.stock <= 1) {
-    await prisma.notification.create({
-      data: {
-        title: 'Sipariş: Düşük Stok',
-        message: `${product.name} siparişi alındı, stok kritik (${product.stock} adet)`,
-        type: NotificationType.LOW_STOCK,
-        productId,
-      },
-    });
+  const product = await prisma.product.findUnique({ where: { id: productId } });
+  if (!product || !product.isActive) {
+    throw Object.assign(new Error('Ürün bulunamadı'), { status: 404 });
   }
+
+  const order = await prisma.order.create({
+    data: { productId, userId: req.userId, quantity: qty, customerNote, status: OrderStatus.PENDING },
+    include: {
+      product: { select: { id: true, name: true, category: true, price: true } },
+      user: { select: { id: true, name: true } },
+    },
+  });
 
   // ── Tüm ortaklara sipariş push bildirimi ────────────────────────────────
   const pushTitle = '📦 Yeni Sipariş!';
@@ -113,129 +84,39 @@ export const getOrders = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const completeOrder = asyncHandler(async (req: Request, res: Response) => {
-  const result = await prisma.$transaction(async (tx) => {
-    const order = await tx.order.findUnique({ where: { id: req.params.id } });
-
-    if (!order) {
-      throw Object.assign(new Error('Sipariş bulunamadı'), { status: 404 });
-    }
-    if (order.status !== OrderStatus.PENDING) {
-      throw Object.assign(new Error('Sadece bekleyen siparişler tamamlanabilir'), { status: 400 });
-    }
-
-    const product = await tx.product.findUnique({ where: { id: order.productId } });
-    if (!product || !product.isActive) {
-      throw Object.assign(new Error('Ürün bulunamadı'), { status: 404 });
-    }
-
-    const completed = await tx.order.updateMany({
-      where: { id: order.id, status: OrderStatus.PENDING },
-      data: { status: OrderStatus.COMPLETED, completedAt: new Date() },
-    });
-    if (completed.count === 0) {
-      throw Object.assign(new Error('Sadece bekleyen siparişler tamamlanabilir'), { status: 400 });
-    }
-
-    const stockUpdate = await tx.product.updateMany({
-      where: { id: order.productId, isActive: true, stock: { gte: order.quantity } },
-      data: { stock: { decrement: order.quantity } },
-    });
-
-    if (stockUpdate.count === 0) {
-      const latest = await tx.product.findUnique({
-        where: { id: order.productId },
-        select: { stock: true },
-      });
-      throw Object.assign(
-        new Error(`Yetersiz stok. Mevcut: ${latest?.stock ?? product.stock} adet`),
-        { status: 400 }
-      );
-    }
-
-    const updatedProduct = await tx.product.findUnique({
-      where: { id: order.productId },
-      select: { stock: true },
-    });
-    const newStock = updatedProduct?.stock ?? product.stock - order.quantity;
-
-    const sale = await tx.sale.create({
-      data: {
-        productId: order.productId,
-        userId: order.userId,
-        quantity: order.quantity,
-        unitPrice: product.price,
-        totalPrice: Number(product.price) * order.quantity,
-        customerNote: order.customerNote,
-      },
-    });
-
-    const completedOrder = await tx.order.findUniqueOrThrow({
-      where: { id: order.id },
-      include: {
-        product: { select: { id: true, name: true, category: true } },
-        user: { select: { id: true, name: true } },
-      },
-    });
-
-    if (newStock === 0) {
-      await tx.notification.create({
-        data: {
-          title: 'Stok Tükendi',
-          message: `${product.name} stok tükendi!`,
-          type: NotificationType.OUT_OF_STOCK,
-          productId: order.productId,
-        },
-      });
-    } else if (newStock <= 1) {
-      await tx.notification.create({
-        data: {
-          title: 'Düşük Stok',
-          message: `${product.name} kritik stok seviyesinde (${newStock} adet)`,
-          type: NotificationType.LOW_STOCK,
-          productId: order.productId,
-        },
-      });
-    }
-
-    return { order: completedOrder, sale };
-  });
-
-  // ── Tüm ortaklara satış push bildirimi (sipariş tamamlandı) ─────────────
-  const completedProduct = result.order.product;
-  const totalStr = Number(result.sale.totalPrice).toLocaleString('tr-TR', {
-    style: 'currency',
-    currency: 'TRY',
-    maximumFractionDigits: 2,
-  });
-  const cPushTitle = '✅ Sipariş Tamamlandı!';
-  const cPushBody = `${completedProduct.name} — ${result.sale.quantity} adet\nToplam: ${totalStr}`;
-
-  await prisma.notification.create({
-    data: {
-      title: cPushTitle,
-      message: cPushBody,
-      type: NotificationType.SALE,
-      productId: completedProduct.id,
+  const order = await prisma.order.findUnique({
+    where: { id: req.params.id },
+    include: {
+      product: { select: { id: true, name: true, category: true } },
+      user: { select: { id: true, name: true } },
     },
   });
 
-  await sendPushToAll(cPushTitle, cPushBody, { type: 'SALE', orderId: result.order.id });
+  if (!order) {
+    res.status(404).json({ success: false, error: 'Sipariş bulunamadı' });
+    return;
+  }
+  if (order.status !== OrderStatus.PENDING) {
+    res.status(400).json({ success: false, error: 'Sadece bekleyen siparişler hazır işaretlenebilir' });
+    return;
+  }
+
+  await prisma.order.delete({ where: { id: order.id } });
 
   await writeAuditLog({
     req,
-    action: 'ORDER_COMPLETE',
+    action: 'ORDER_READY_DELETE',
     entityType: 'Order',
-    entityId: result.order.id,
+    entityId: order.id,
     metadata: {
-      saleId: result.sale.id,
-      productId: completedProduct.id,
-      productName: completedProduct.name,
-      quantity: result.sale.quantity,
-      totalPrice: Number(result.sale.totalPrice),
+      productId: order.productId,
+      productName: order.product.name,
+      quantity: order.quantity,
+      customerNote: order.customerNote,
     },
   });
 
-  res.json({ success: true, data: result });
+  res.json({ success: true, data: { order }, message: 'Sipariş hazırlandı ve listeden kaldırıldı' });
 });
 
 export const cancelOrder = asyncHandler(async (req: Request, res: Response) => {
